@@ -1,0 +1,780 @@
+{
+  "name": "IG Feed Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "id": "7abfe2c5-1223-5021-825e-9319096f15bd",
+      "name": "Agendamento",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Um cliente por linha. Para desligar um cliente sem o apagar: active: false.\n// site: URL do site, sem / no fim. key: chave em Definições > IG Feed Sync desse site.\nconst clientes = [\n  { site: 'https://www.rcplastica.pt', key: 'COLAR_AQUI_A_CHAVE', active: true },\n  // { site: 'https://outrocliente.pt', key: '...', active: true },\n];\n\nreturn clientes.filter(c => c.active).map(c => ({ json: { site: c.site, key: c.key } }));"
+      },
+      "id": "e1b873ed-8056-547f-82ed-3f6e0f80cf4e",
+      "name": "Clientes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "notes": "Lista de clientes. Editar aqui para juntar, mudar ou desligar clientes."
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "6a3b695a-14f0-57bc-9e09-47b5f959053b",
+      "name": "Sincronizar cada cliente",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        440,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Escolher ESTE MESMO workflow na lista. Corre um cliente de cada vez; se um falhar, passa ao seguinte."
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "defad2de-e1e1-5800-a539-a4517a4e99a6",
+      "name": "Cliente",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.site }}/wp-json/igfs/v1/state",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-IGFS-Key",
+              "value": "={{ $('Cliente').first().json.key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "97301a21-a7e8-5392-98bc-0d6abe2a2603",
+      "name": "WP: estado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "64488458-0968-4e56-900f-f731ceec12c3",
+              "leftValue": "={{ $json.enabled }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "b165c796-0910-5a0a-a62c-e32fa2ad77d8",
+      "name": "Ativo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/apify~instagram-profile-scraper/run-sync-get-dataset-items",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 180000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ usernames: [$json.username] }) }}"
+      },
+      "id": "a7de4b89-38df-5805-a581-26bf485964ae",
+      "name": "Apify: perfil",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cliente').first().json.site }}/wp-json/igfs/v1/profile",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-IGFS-Key",
+              "value": "={{ $('Cliente').first().json.key }}"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ username: $json.username, full_name: $json.fullName || '', followers: $json.followersCount || 0, posts_count: $json.postsCount || 0, avatar_url: $json.profilePicUrlHD || $json.profilePicUrl || '' }) }}"
+      },
+      "id": "c9115d1f-1369-5f12-8e8b-60a41d7b2db8",
+      "name": "WP: perfil",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/apify~instagram-post-scraper/runs?waitForFinish=60",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 90000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ username: [$json.username], onlyPostsNewerThan: $json.since, resultsLimit: 1000 }) }}"
+      },
+      "id": "1143850d-83e5-5792-b5e0-948cbf865a23",
+      "name": "Apify: iniciar posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "62555288-9b8e-47e4-bd99-8b09642f2754",
+              "leftValue": "={{ ['READY','RUNNING'].includes($json.data.status) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "55ce5fc6-31e5-5c63-9785-91581178ec0d",
+      "name": "Terminou?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        900,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "1e978132-dd8c-513c-bfb3-1e7861b4e544",
+      "name": "Esperar 30 s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        700
+      ],
+      "webhookId": "6d6ad02a-55e1-4c0d-bebd-0535780929b8"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.apify.com/v2/actor-runs/{{ $json.data.id }}?waitForFinish=60",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "id": "315889c8-c890-5515-b641-3bc4ca8debd2",
+      "name": "Apify: ver estado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1340,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e408120d-f6fc-490c-96c2-742fa9e1109d",
+              "leftValue": "={{ $json.data.status }}",
+              "rightValue": "SUCCEEDED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "507d6328-9232-5491-b6b4-8cedac673499",
+      "name": "Sucesso?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "=Apify terminou com estado {{ $json.data.status }} ({{ $('Cliente').first().json.site }})"
+      },
+      "id": "1ebb16f3-c324-507c-a915-8dd9c9e7abb8",
+      "name": "Erro Apify",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.apify.com/v2/datasets/{{ $json.data.defaultDatasetId }}/items?clean=true&format=json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "a047ae2e-b0fc-5939-85b9-352597da1a48",
+      "name": "Apify: resultados",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1340,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "75852ed0-98b1-4227-a274-26ccc7946e66",
+              "leftValue": "={{ $json.shortCode }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "c95f5a54-870e-5a2a-a978-c017cc27d139",
+      "name": "Só publicações",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1560,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "timestamp",
+              "order": "ascending"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "679c79e1-a67c-5b71-8085-0ee821651450",
+      "name": "Mais antigas primeiro",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        320
+      ],
+      "notes": "Por ordem cronológica: se falhar a meio, a próxima execução retoma sem buracos."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cliente').first().json.site }}/wp-json/igfs/v1/posts",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-IGFS-Key",
+              "value": "={{ $('Cliente').first().json.key }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 500
+            }
+          }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ shortcode: $json.shortCode, url: $json.url, caption: $json.caption || '', type: $json.type, timestamp: $json.timestamp, image_url: $json.displayUrl }) }}"
+      },
+      "id": "c56b6525-f66e-563e-94ab-9b62f975b9ec",
+      "name": "WP: guardar publicação",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2000,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e82d56f1-10b7-4be5-859b-fb414b4fb21c",
+              "leftValue": "={{ ($json.extra_urls || []).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "ff0551cc-2def-58c5-96e2-117704212e9f",
+      "name": "Tem extras?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        680,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/apify~instagram-post-scraper/run-sync-get-dataset-items",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 300000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ username: $json.extra_urls }) }}"
+      },
+      "id": "738a1817-aeba-5282-9212-75bb8a0dbbae",
+      "name": "Apify: extras",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3cc5c39f-89fa-4d6a-a5ee-e4720c756638",
+              "leftValue": "={{ $json.shortCode }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "2ea0b458-1b23-5cee-9110-ca0d79291fb2",
+      "name": "Só extras",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cliente').first().json.site }}/wp-json/igfs/v1/posts",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-IGFS-Key",
+              "value": "={{ $('Cliente').first().json.key }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 500
+            }
+          }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ shortcode: $json.shortCode, url: 'https://www.instagram.com/p/' + $json.shortCode + '/', caption: $json.caption || '', type: $json.type, timestamp: $json.timestamp, image_url: $json.displayUrl, extra: true }) }}"
+      },
+      "id": "6b44c89d-c9eb-5d4e-91cc-8d008b86404a",
+      "name": "WP: guardar extra",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1340,
+        900
+      ]
+    }
+  ],
+  "connections": {
+    "Agendamento": {
+      "main": [
+        [
+          {
+            "node": "Clientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clientes": {
+      "main": [
+        [
+          {
+            "node": "Sincronizar cada cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cliente": {
+      "main": [
+        [
+          {
+            "node": "WP: estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WP: estado": {
+      "main": [
+        [
+          {
+            "node": "Ativo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ativo?": {
+      "main": [
+        [
+          {
+            "node": "Apify: perfil",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Apify: iniciar posts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Tem extras?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify: perfil": {
+      "main": [
+        [
+          {
+            "node": "WP: perfil",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify: iniciar posts": {
+      "main": [
+        [
+          {
+            "node": "Terminou?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Terminou?": {
+      "main": [
+        [
+          {
+            "node": "Sucesso?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Esperar 30 s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Esperar 30 s": {
+      "main": [
+        [
+          {
+            "node": "Apify: ver estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify: ver estado": {
+      "main": [
+        [
+          {
+            "node": "Terminou?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sucesso?": {
+      "main": [
+        [
+          {
+            "node": "Apify: resultados",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Erro Apify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify: resultados": {
+      "main": [
+        [
+          {
+            "node": "Só publicações",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Só publicações": {
+      "main": [
+        [
+          {
+            "node": "Mais antigas primeiro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mais antigas primeiro": {
+      "main": [
+        [
+          {
+            "node": "WP: guardar publicação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem extras?": {
+      "main": [
+        [
+          {
+            "node": "Apify: extras",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify: extras": {
+      "main": [
+        [
+          {
+            "node": "Só extras",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Só extras": {
+      "main": [
+        [
+          {
+            "node": "WP: guardar extra",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

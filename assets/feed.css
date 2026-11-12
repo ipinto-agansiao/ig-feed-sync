@@ -1,0 +1,245 @@
+/* IG Feed Sync. Cores, espaços e tamanhos ajustáveis pelo tema através das variáveis. */
+.igfs {
+	--igfs-gap: 18px;
+	--igfs-accent: #111;
+	--igfs-accent-text: #fff;
+	--igfs-muted: #777;
+	--igfs-card: #fff;
+	width: 100%;
+	max-width: var(--igfs-max-width, none);
+	margin-inline: auto;
+	font-size: 16px;
+}
+
+.igfs__header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 24px;
+	margin-bottom: 32px;
+	color: inherit;
+	text-decoration: none;
+}
+
+.igfs__avatar {
+	flex: none;
+	width: 96px;
+	height: 96px;
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+.igfs__avatar--icon {
+	display: grid;
+	place-items: center;
+	background: var(--igfs-accent);
+	color: var(--igfs-accent-text);
+}
+
+.igfs__avatar--icon svg {
+	width: 34%;
+	height: 34%;
+	fill: currentColor;
+}
+
+.igfs__name {
+	font-size: 1.375em;
+	font-weight: 600;
+}
+
+.igfs__stat {
+	font-size: 1em;
+}
+
+.igfs--cards .igfs__header {
+	padding-bottom: 18px;
+	border-bottom: 1px solid #ccc;
+}
+
+/* Linhas esticadas e imagens na mesma proporção: tudo alinhado, espaços iguais. */
+.igfs .igfs__grid {
+	display: grid;
+	grid-template-columns: repeat(var(--igfs-cols, 4), minmax(0, 1fr));
+	gap: var(--igfs-gap);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.igfs .igfs__item {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+}
+
+.igfs__media {
+	position: relative;
+	display: block;
+	flex: 1;
+	overflow: hidden;
+}
+
+.igfs__media img {
+	display: block;
+	width: 100%;
+	height: auto;
+	aspect-ratio: var(--igfs-ratio, auto);
+	object-fit: cover;
+	transition: transform 0.4s ease;
+}
+
+.igfs__media:hover img,
+.igfs__media:focus-visible img {
+	transform: scale(1.03);
+}
+
+.igfs__icon {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	width: 24px;
+	height: 24px;
+	fill: #fff;
+	filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.5));
+}
+
+/* Destaque: a publicação mais recente ocupa 2x2 e a imagem enche o espaço. */
+.igfs--featured .igfs__item:first-child {
+	grid-column: span 2;
+	grid-row: span 2;
+}
+
+/*
+ * Destaque alto: 1.ª coluna com a imagem quadrada; as outras com 2 publicações cada.
+ * A largura da 1.ª coluna é calculada para o quadrado ter a altura exata das 2 linhas:
+ * k = altura de 2 imagens em larguras de coluna (2 / proporção), w = largura das colunas pequenas.
+ */
+.igfs.igfs--featured-tall {
+	--igfs-meta-h: 52px;
+}
+
+.igfs.igfs--featured-tall .igfs__grid {
+	--igfs-k: calc(2 / (var(--igfs-ratio)));
+	--igfs-w: calc((100% - var(--igfs-meta-h) - (var(--igfs-rest) + 1) * var(--igfs-gap)) / (var(--igfs-k) + var(--igfs-rest)));
+	grid-template-columns: calc(var(--igfs-meta-h) + var(--igfs-gap) + var(--igfs-k) * var(--igfs-w)) repeat(var(--igfs-rest), var(--igfs-w));
+}
+
+.igfs--featured-tall .igfs__item:first-child .igfs__media img {
+	object-position: top;
+}
+
+.igfs--featured-tall .igfs__item:first-child {
+	grid-column: span 1;
+}
+
+.igfs--featured .igfs__item:first-child .igfs__media img {
+	position: absolute;
+	inset: 0;
+	height: 100%;
+	aspect-ratio: auto;
+}
+
+/* Layout "cards": cabeçalho por publicação. */
+.igfs--cards .igfs__item {
+	background: var(--igfs-card);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.igfs__meta {
+	display: flex;
+	box-sizing: border-box;
+	align-items: center;
+	gap: 8px;
+	height: var(--igfs-meta-h, auto);
+	padding: 10px;
+}
+
+.igfs__meta-avatar {
+	flex: none;
+	width: 30px;
+	height: 30px;
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+.igfs__meta-text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	line-height: 1.3;
+}
+
+.igfs__meta-user {
+	overflow: hidden;
+	font-size: 0.8125em;
+	font-weight: 500;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.igfs__meta time {
+	color: var(--igfs-muted);
+	font-size: 0.75em;
+}
+
+.igfs__button {
+	display: table;
+	margin: 40px auto 0;
+	padding: 12px 36px;
+	background: var(--igfs-accent);
+	color: var(--igfs-accent-text);
+	text-decoration: none;
+}
+
+.igfs__button:hover,
+.igfs__button:focus-visible {
+	opacity: 0.85;
+}
+
+@media (max-width: 767px) {
+	.igfs {
+		font-size: 14px;
+	}
+
+	.igfs .igfs__grid,
+	.igfs.igfs--featured-tall .igfs__grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		--igfs-gap: 10px;
+	}
+
+	.igfs__avatar {
+		width: 64px;
+		height: 64px;
+	}
+
+	.igfs__meta {
+		padding: 8px;
+	}
+
+	/* Em 2 colunas o destaque ocupa a linha inteira e não há vizinhos para dar a altura. */
+	.igfs--featured .igfs__item:first-child {
+		grid-column: span 2;
+		grid-row: auto;
+	}
+
+	.igfs--featured .igfs__item:first-child .igfs__media img {
+		position: static;
+		aspect-ratio: var(--igfs-ratio, auto);
+	}
+
+	.igfs--featured-tall .igfs__item:first-child .igfs__media img {
+		aspect-ratio: 1;
+	}
+
+	.igfs__meta-avatar {
+		width: 28px;
+		height: 28px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.igfs__media img {
+		transition: none;
+	}
+}

@@ -1,0 +1,25 @@
+# Ao publicar uma release no GitHub, gera ig-feed-sync.zip e junta-o à release.
+# Os sites com o plugin instalado descarregam este zip quando atualizam.
+name: Release zip
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  zip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Criar zip
+        run: |
+          mkdir -p build/ig-feed-sync
+          rsync -a --exclude '.git*' --exclude '.github' --exclude 'build' --exclude 'n8n' ./ build/ig-feed-sync/
+          cd build && zip -rq ig-feed-sync.zip ig-feed-sync
+      - name: Juntar à release
+        run: gh release upload "${{ github.event.release.tag_name }}" build/ig-feed-sync.zip --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

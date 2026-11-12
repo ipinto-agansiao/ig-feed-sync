@@ -1,0 +1,107 @@
+# IG Feed Sync
+
+Grelha de publicações do Instagram alimentada pelo n8n e pelo Apify. O plugin não faz pedidos para fora do site: é o n8n que envia as publicações para a REST API.
+
+## Atualizações (GitHub)
+
+Os sites recebem as versões novas a partir das releases do repositório público definido em `IGFS_UPDATE_REPO`, no `ig-feed-sync.php`. Não é preciso nenhum plugin extra: a biblioteca Plugin Update Checker vem dentro de `lib/`.
+
+Para publicar uma versão nova:
+
+1. Subir o número da versão no `ig-feed-sync.php`, em dois sítios: no cabeçalho `Version:` e na constante `IGFS_VERSION` (ex.: `1.3.0`).
+2. Fazer commit e push para o GitHub.
+3. No GitHub, ir a **Releases > Draft a new release**:
+   - criar a tag `v1.3.0`;
+   - carregar em **Publish release**.
+
+   A Action `.github/workflows/release.yml` gera `ig-feed-sync.zip` e junta-o à release.
+4. Nos sites, a atualização aparece em **Plugins**, com o botão **Atualizar agora**. Com as atualizações automáticas ativas nesse plugin, os sites atualizam-se sozinhos.
+
+## n8n: um só workflow para todos os clientes
+
+Instalação, feita uma única vez:
+
+1. No n8n, importar `n8n/ig-feed-sync.json`.
+2. Criar a credencial **Header Auth** "Apify":
+   - Name: `Authorization`;
+   - Value: `Bearer <token do Apify>`.
+
+   Atribuir esta credencial aos 4 nós `Apify: …`.
+3. No nó **Sincronizar cada cliente**, escolher este mesmo workflow na lista "Workflow".
+4. Ativar o workflow. Por defeito corre de 12 em 12 horas.
+
+Como funciona:
+
+- O nó **Clientes** tem a lista dos sites.
+- O workflow chama-se a si próprio uma vez por cliente, um cliente de cada vez.
+- Se um cliente falhar, passa ao seguinte. O erro fica nas execuções do n8n.
+
+## Juntar um cliente
+
+1. Copiar a pasta `ig-feed-sync` para `wp-content/plugins/` e ativar o plugin.
+2. Em **Definições > IG Feed Sync**, preencher:
+   - a conta do Instagram;
+   - a data de "Importar desde";
+   - a opção "Ativa".
+3. Copiar a chave da mesma página.
+4. No nó **Clientes** do n8n, acrescentar uma linha:
+   `{ site: 'https://site.pt', key: 'CHAVE', active: true },`
+5. Executar o workflow uma vez à mão (**Execute workflow**) para a primeira importação.
+6. Pôr o shortcode no tema ou numa página.
+
+Cada site guarda a data da última publicação recebida. Os pedidos seguintes só trazem o que é novo.
+
+## Colaborações e publicações com restrição de idade
+
+- **Colaborações sem restrição:** colar o link em **Publicações extra**, nas definições do plugin. O n8n importa-a na execução seguinte.
+- **Publicações com restrição de idade:** o Apify não as consegue ler. Adicioná-las à mão em **Instagram > Adicionar**:
+  1. Pôr um título.
+  2. Escolher a imagem de destaque.
+  3. Na caixa "Instagram", colar o link e escolher o tipo.
+  4. Acertar a data e publicar.
+
+  A publicação fica com o shortcode do Instagram. Por isso o n8n não a duplica e deixa de a pedir em "Publicações extra".
+
+## Shortcode
+
+```
+[igfs_feed layout="cards" num="7" featured="tall"]
+[igfs_feed layout="highlight" num="9" cols="4" title="#conta" button="Ver mais no Instagram"]
+```
+
+- `cards`: cabeçalho com foto, publicações e seguidores, e um cabeçalho pequeno em cada cartão.
+- `highlight`: imagens quadradas, com a primeira em 2x2.
+- `featured="tall"`: a primeira publicação ocupa uma coluna mais larga e tem a altura de 2 linhas. A imagem fica quadrada e alinhada ao topo. As outras colunas têm 2 publicações cada. Com 4 colunas, usar `num="7"`. Esta opção precisa de uma proporção numérica (não funciona com `ratio="auto"`).
+- `featured="1"`: a primeira publicação ocupa 2x2. Com 4 colunas, usar `num="9"`. `featured="0"` desliga o destaque.
+- `ratio`: proporção das imagens. Por defeito é `1` (quadrado); `4/5` é a proporção vertical do Instagram. Com `auto`, cada imagem mantém a proporção original.
+- `width`: largura máxima da grelha, em px. Sem este atributo, a grelha ocupa a largura toda.
+- Imagem do perfil: pode ser escolhida em Definições > IG Feed Sync. Se não for escolhida nenhuma, é usada a foto do Instagram, atualizada de 7 em 7 dias.
+- As cores podem ser alteradas no CSS do tema, através das variáveis em `.igfs`: `--igfs-accent`, `--igfs-accent-text`, `--igfs-card`, `--igfs-muted` e `--igfs-gap`.
+
+## Desligar ou cortar o acesso
+
+- No n8n: pôr `active: false` na linha do cliente, no nó **Clientes**.
+- No WordPress: desligar a opção "Ativa". Os pedidos de escrita passam a devolver 403.
+- Se a chave for exposta, usar "Gerar chave nova" e atualizar a credencial no n8n.
+
+## REST API (`/wp-json/igfs/v1`, header `X-IGFS-Key`)
+
+| Rota | Método | O que faz |
+|---|---|---|
+| `/state` | GET | Devolve `enabled`, `username` e `since`. Regista a hora do pedido. |
+| `/profile` | POST | Recebe `username`, `full_name`, `followers`, `posts_count` e `avatar_url`. |
+| `/posts` | POST | Recebe `shortcode`, `url`, `caption`, `type` (`Image`, `Video` ou `Sidecar`), `timestamp` e `image_url`. |
+
+Regras:
+
+- `since` é o dia da última publicação guardada, ou a data inicial se ainda não houver nenhuma.
+- As publicações repetidas são atualizadas pelo `shortcode`. As que estão no lixo não voltam.
+- As imagens só são aceites da CDN do Instagram (`cdninstagram.com` e `fbcdn.net`). O filtro `igfs_image_hosts` permite mudar esta lista.
+- Dos carrosséis só se guarda a capa. Dos vídeos só se guarda a miniatura.
+- O workflow envia as publicações das mais antigas para as mais recentes. Se falhar a meio, a execução seguinte retoma sem deixar buracos.
+
+## Sites com Basic Auth (staging)
+
+O n8n não passa a Basic Auth do servidor. Para que chegue ao plugin, abrir só o caminho do plugin no `.htaccess`, por exemplo:
+`SetEnvIf Request_URI "^/wp-json/igfs/" <variável de exceção>`.
+O plugin continua protegido pela chave.
