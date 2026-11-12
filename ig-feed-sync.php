@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IG Feed Sync
  * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.4.3
+ * Version: 1.4.4
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.4.3' );
+define( 'IGFS_VERSION', '1.4.4' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -894,11 +894,13 @@ function igfs_feed_shortcode( $atts ) {
 							$slides[] = array( $src[0], (int) $src[1], (int) $src[2] );
 						}
 					}
+					// Bases de dados utf8 (sem mb4) guardam os emojis como &#x…; — volta a convertê-los.
+					$caption = html_entity_decode( get_the_content(), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 					$items[] = array(
 						'url'     => (string) get_post_meta( get_the_ID(), '_igfs_url', true ),
 						'sc'      => (string) get_post_meta( get_the_ID(), '_igfs_shortcode', true ),
 						'type'    => $type,
-						'caption' => get_the_content(),
+						'caption' => $caption,
 						'date'    => get_the_date(),
 						'slides'  => $slides,
 					);
@@ -917,7 +919,7 @@ function igfs_feed_shortcode( $atts ) {
 							null,
 							'medium_large',
 							array(
-								'alt'     => wp_trim_words( get_the_content(), 20 ),
+								'alt'     => wp_trim_words( html_entity_decode( get_the_content(), ENT_QUOTES | ENT_HTML5, 'UTF-8' ), 20 ),
 								'loading' => 'lazy',
 								'sizes'   => '(max-width: 767px) 50vw, ' . round( 100 / $cols ) . 'vw',
 							)
@@ -929,7 +931,8 @@ function igfs_feed_shortcode( $atts ) {
 			<?php endwhile; ?>
 		</ul>
 		<?php if ( $lightbox ) : ?>
-			<script type="application/json" class="igfs-data">
+			<?php // <template> e não <script>: bloqueadores de cookies (ex.: Complianz) reescrevem scripts que mencionam o Instagram e estragavam o JSON. ?>
+			<template class="igfs-data">
 			<?php
 			echo wp_json_encode(
 				array(
@@ -952,7 +955,7 @@ function igfs_feed_shortcode( $atts ) {
 				JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE
 			);
 			?>
-			</script>
+			</template>
 		<?php endif; ?>
 		<?php if ( '' !== $btn_text ) : ?>
 			<a class="igfs__button" href="<?php echo esc_url( $prof_url ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $btn_text ); ?></a>

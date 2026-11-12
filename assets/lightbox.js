@@ -300,7 +300,7 @@
 			return;
 		}
 		try {
-			feed = JSON.parse( data.textContent );
+			feed = JSON.parse( data.content ? data.content.textContent : data.textContent );
 		} catch ( err ) {
 			return;
 		}
