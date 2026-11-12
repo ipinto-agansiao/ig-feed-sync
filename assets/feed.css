@@ -116,7 +116,7 @@
  * k = altura de 2 imagens em larguras de coluna (2 / proporção), w = largura das colunas pequenas.
  */
 .igfs.igfs--featured-tall {
-	--igfs-meta-h: 52px;
+	--igfs-meta-h: 36px;
 }
 
 .igfs.igfs--featured-tall .igfs__grid {
@@ -155,33 +155,11 @@
 	padding: 10px;
 }
 
-.igfs__meta-avatar {
-	flex: none;
-	width: 30px;
-	height: 30px;
-	border-radius: 50%;
-	object-fit: cover;
-}
-
-.igfs__meta-text {
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
-	line-height: 1.3;
-}
-
-.igfs__meta-user {
-	overflow: hidden;
-	font-size: 0.8125em;
-	font-weight: 500;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
 .igfs__meta time {
 	color: var(--igfs-muted);
-	font-size: 0.75em;
+	font-size: 0.8125em;
 	font-weight: 400;
+	line-height: 1;
 }
 
 .igfs__button {
@@ -256,10 +234,6 @@
 		aspect-ratio: 1;
 	}
 
-	.igfs__meta-avatar {
-		width: 28px;
-		height: 28px;
-	}
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -450,6 +424,23 @@
 	color: #111;
 }
 
+.igfs-lb__nav svg,
+.igfs-lb__slide svg {
+	width: 24px;
+	height: 24px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.5;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.igfs-lb__slide svg {
+	width: 18px;
+	height: 18px;
+	stroke-width: 2;
+}
+
 .igfs-lb__close svg {
 	width: 22px;
 	height: 22px;
@@ -468,10 +459,8 @@
 	top: 50%;
 	width: 48px;
 	height: 48px;
-	padding-bottom: 6px;
 	border-radius: 50%;
 	background: rgba(255, 255, 255, 0.15);
-	font-size: 40px;
 	transform: translateY(-50%);
 	transition: background-color 0.2s ease;
 }
@@ -508,13 +497,26 @@
 	right: 10px;
 }
 
-.igfs-lb__dots {
+/* Barra dos pontos: no computador fica por cima do fundo da imagem (a largura da imagem é a caixa menos o painel). */
+.igfs-lb__bar {
 	position: absolute;
 	bottom: 4px;
 	left: 0;
 	display: flex;
 	justify-content: center;
-	width: 100%;
+	width: calc(100% - 340px);
+	pointer-events: none;
+}
+
+.igfs-lb__dots {
+	display: flex;
+	justify-content: center;
+	pointer-events: auto;
+}
+
+/* As setas da barra só existem no telemóvel; no computador há as setas laterais. */
+.igfs-lb__bar-btn {
+	display: none;
 }
 
 /* Área de toque de 24 px (WCAG 2.5.8); o ponto visível é desenhado no centro. */
@@ -615,9 +617,45 @@
 		height: 75vh;
 	}
 
-	.igfs-lb__dots {
+	.igfs-lb__bar {
 		position: static;
-		padding: 4px 0 0;
+		order: 3;
+		justify-content: space-between;
+		align-items: center;
+		width: auto;
+		padding: 0 4px;
+		pointer-events: auto;
+	}
+
+	.igfs-lb__bar-btn {
+		display: grid;
+		place-items: center;
+		width: 44px;
+		height: 44px;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: #111;
+		cursor: pointer;
+	}
+
+	.igfs-lb__bar-btn svg {
+		width: 22px;
+		height: 22px;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.5;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+
+	.igfs-lb__bar-btn:focus-visible {
+		outline-color: #111;
+	}
+
+	/* No telemóvel o carrossel passa-se a deslizar, como no Instagram. */
+	.igfs-lb__slide {
+		display: none;
 	}
 
 	.igfs-lb__dot::before {
@@ -636,20 +674,20 @@
 
 	.igfs-lb__caption {
 		flex: none;
-		order: 3;
+		order: 4;
 		padding: 8px 12px 0;
 		overflow: visible;
 	}
 
 	.igfs-lb__date {
-		order: 4;
+		order: 5;
 		padding: 6px 12px 0;
 		font-size: 11px;
 		text-transform: uppercase;
 	}
 
 	.igfs-lb__link {
-		order: 5;
+		order: 6;
 		margin: 14px 12px 24px;
 	}
 

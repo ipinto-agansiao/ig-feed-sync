@@ -46,7 +46,12 @@
 			date: el( 'p', 'igfs-lb__date' ),
 			link: el( 'a', 'igfs-lb__link', { target: '_blank', rel: 'noopener' } ),
 			// Anuncia ao leitor de ecrã a publicação e a imagem atuais.
-			status: el( 'p', 'igfs-lb__status', { 'aria-live': 'polite' } )
+			status: el( 'p', 'igfs-lb__status', { 'aria-live': 'polite' } ),
+			// Barra por baixo da imagem: pontos do carrossel e, no telemóvel, setas de publicação.
+			bar: el( 'div', 'igfs-lb__bar' ),
+			barPrev: el( 'button', 'igfs-lb__bar-btn', { type: 'button', 'aria-label': t.prev } ),
+			barNext: el( 'button', 'igfs-lb__bar-btn', { type: 'button', 'aria-label': t.next } ),
+			dots: el( 'div', 'igfs-lb__dots' )
 		};
 		// Ícone desenhado (o "×" de texto fica descentrado consoante a fonte).
 		var svg = document.createElementNS( 'http://www.w3.org/2000/svg', 'svg' );
@@ -54,10 +59,13 @@
 		svg.setAttribute( 'aria-hidden', 'true' );
 		svg.innerHTML = '<path d="M5 5l14 14M19 5L5 19"/>';
 		els.close.appendChild( svg );
-		els.prev.textContent = '‹';
-		els.next.textContent = '›';
+		els.barPrev.appendChild( chevron( 'M15 5l-7 7 7 7' ) );
+		els.barNext.appendChild( chevron( 'M9 5l7 7-7 7' ) );
+		els.bar.append( els.barPrev, els.dots, els.barNext );
+		els.prev.appendChild( chevron( 'M15 5l-7 7 7 7' ) );
+		els.next.appendChild( chevron( 'M9 5l7 7-7 7' ) );
 		els.side.append( els.head, els.caption, els.date, els.link, els.status );
-		els.box.append( els.media, els.side, els.close ); // O × fica dentro da caixa, junto à publicação.
+		els.box.append( els.media, els.bar, els.side, els.close ); // O × fica dentro da caixa, junto à publicação.
 		dialog.append( els.prev, els.next, els.box );
 		document.body.appendChild( dialog );
 
@@ -68,6 +76,12 @@
 			show( index - 1 );
 		} );
 		els.next.addEventListener( 'click', function () {
+			show( index + 1 );
+		} );
+		els.barPrev.addEventListener( 'click', function () {
+			show( index - 1 );
+		} );
+		els.barNext.addEventListener( 'click', function () {
 			show( index + 1 );
 		} );
 		// Clique fora da caixa fecha.
@@ -106,6 +120,14 @@
 				step( dx < 0 ? 1 : -1 );
 			}
 		} );
+	}
+
+	function chevron( d ) {
+		var icon = document.createElementNS( 'http://www.w3.org/2000/svg', 'svg' );
+		icon.setAttribute( 'viewBox', '0 0 24 24' );
+		icon.setAttribute( 'aria-hidden', 'true' );
+		icon.innerHTML = '<path d="' + d + '"/>';
+		return icon;
 	}
 
 	function step( dir ) {
@@ -162,8 +184,9 @@
 		var alt = altText( item ) + ( item.slides.length > 1 ? ' (' + feed.i18n.slide.toLowerCase() + ' ' + ( n + 1 ) + ' / ' + item.slides.length + ')' : '' );
 		var img = el( 'img', 'igfs-lb__img', { src: data[ 0 ], width: data[ 1 ], height: data[ 2 ], alt: alt } );
 		els.media.appendChild( img );
+		els.dots.textContent = '';
 		if ( item.slides.length > 1 ) {
-			var dots = el( 'div', 'igfs-lb__dots' );
+			var dots = els.dots;
 			item.slides.forEach( function ( s, i ) {
 				var dot = el( 'button', 'igfs-lb__dot' + ( i === n ? ' is-active' : '' ), {
 					type: 'button',
@@ -177,8 +200,8 @@
 			} );
 			var back = el( 'button', 'igfs-lb__slide igfs-lb__slide--prev', { type: 'button', 'aria-label': feed.i18n.slide + ' ' + n } );
 			var fwd = el( 'button', 'igfs-lb__slide igfs-lb__slide--next', { type: 'button', 'aria-label': feed.i18n.slide + ' ' + ( n + 2 ) } );
-			back.textContent = '‹';
-			fwd.textContent = '›';
+			back.appendChild( chevron( 'M15 5l-7 7 7 7' ) );
+			fwd.appendChild( chevron( 'M9 5l7 7-7 7' ) );
 			back.hidden = 0 === n;
 			fwd.hidden = n === item.slides.length - 1;
 			back.addEventListener( 'click', function () {
@@ -187,7 +210,7 @@
 			fwd.addEventListener( 'click', function () {
 				renderSlide( n + 1 );
 			} );
-			els.media.append( back, fwd, dots );
+			els.media.append( back, fwd );
 		}
 		announce();
 		preload();
@@ -223,6 +246,7 @@
 		index = ( n + total ) % total;
 		var item = feed.items[ index ];
 		if ( 'Video' === item.type ) {
+			els.dots.textContent = '';
 			renderVideo( item );
 		} else {
 			renderSlide( 0 );
@@ -252,7 +276,9 @@
 		els.date.textContent = item.date + ( 'Video' === item.type ? ' · ' + feed.i18n.video : '' );
 		els.link.textContent = feed.i18n.open;
 		els.link.href = item.url;
-		els.prev.hidden = els.next.hidden = total < 2;
+		// Nas fotos, o botão só aparece se a opção estiver ligada; nos vídeos aparece sempre.
+		els.link.hidden = 'Video' !== item.type && ! feed.linkPhotos;
+		els.prev.hidden = els.next.hidden = els.barPrev.hidden = els.barNext.hidden = total < 2;
 		els.caption.scrollTop = 0;
 		els.box.scrollTop = 0;
 		if ( 'Video' === item.type ) {

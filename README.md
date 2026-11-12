@@ -65,7 +65,9 @@ Cada site guarda a data da última publicação recebida. Os pedidos seguintes s
 ## Lightbox e imagens
 
 - **Lightbox:** ao clicar numa publicação, abre uma janela no próprio site, com a imagem ou o carrossel completo, a legenda, a data e o botão "Ver no Instagram".
-  - Navega-se com as setas do ecrã, as setas do teclado ou deslizando no telemóvel. O Esc fecha a janela.
+  - **Computador:** setas laterais para mudar de publicação, setas e pontos na imagem para o carrossel, e setas do teclado. O Esc fecha a janela.
+  - **Telemóvel:** barra por baixo da imagem com os pontos do carrossel ao centro e as setas de publicação dos lados, que funcionam também nos vídeos (o iframe não deixa deslizar). O carrossel passa-se a deslizar.
+  - **Botão "Ver no Instagram":** por defeito só aparece nos vídeos. A opção "Mostrar também nas fotos" está em Definições > IG Feed Sync > Imagens.
   - Ctrl ou Cmd + clique abre a publicação no Instagram.
   - Liga-se e desliga-se em Definições > IG Feed Sync > Imagens > Lightbox. No shortcode, `lightbox="1"` ou `lightbox="0"` muda só essa grelha.
 - **Vídeos:** abrem no embed do Instagram (iframe), com o botão "Ver no Instagram" para o caso de não abrirem (por exemplo, em contas com restrição de idade).

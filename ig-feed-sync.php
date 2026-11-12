@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IG Feed Sync
  * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.4.2
+ * Version: 1.4.3
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.4.2' );
+define( 'IGFS_VERSION', '1.4.3' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -907,13 +907,8 @@ function igfs_feed_shortcode( $atts ) {
 				<li class="igfs__item">
 					<?php if ( 'cards' === $layout ) : ?>
 						<div class="igfs__meta">
-							<?php if ( $avatar ) : ?>
-								<?php echo wp_get_attachment_image( $avatar, 'thumbnail', false, array( 'class' => 'igfs__meta-avatar', 'alt' => '', 'loading' => 'lazy' ) ); ?>
-							<?php endif; ?>
-							<span class="igfs__meta-text">
-								<span class="igfs__meta-user"><?php echo esc_html( $username ); ?></span>
-								<time datetime="<?php echo esc_attr( get_the_date( 'c' ) ); ?>"><?php echo esc_html( get_the_date( 'M j' ) ); ?></time>
-							</span>
+							<?php // Só a data: a foto e o nome já estão no cabeçalho da secção. ?>
+							<time datetime="<?php echo esc_attr( get_the_date( 'c' ) ); ?>"><?php echo esc_html( get_the_date( 'M j' ) ); ?></time>
 						</div>
 					<?php endif; ?>
 					<a class="igfs__media" href="<?php echo esc_url( get_post_meta( get_the_ID(), '_igfs_url', true ) ); ?>" target="_blank" rel="noopener"<?php echo $lightbox ? ' data-igfs-i="' . esc_attr( count( $items ) - 1 ) . '"' : ''; ?>>
@@ -941,6 +936,7 @@ function igfs_feed_shortcode( $atts ) {
 					'user'   => $username,
 					'avatar' => $avatar ? (string) wp_get_attachment_image_url( $avatar, 'thumbnail' ) : '',
 					'items'  => $items,
+					'linkPhotos' => (bool) get_option( 'igfs_lb_link_photos', 0 ),
 					'i18n'   => array(
 						'close'   => __( 'Fechar', 'ig-feed-sync' ),
 						'prev'    => __( 'Publicação anterior', 'ig-feed-sync' ),
@@ -1007,6 +1003,15 @@ function igfs_register_settings() {
 			'sanitize_callback' => function ( $value ) {
 				$value = absint( $value );
 				return $value && wp_attachment_is_image( $value ) ? $value : 0;
+			},
+		)
+	);
+	register_setting(
+		'igfs',
+		'igfs_lb_link_photos',
+		array(
+			'sanitize_callback' => function ( $value ) {
+				return $value ? 1 : 0;
 			},
 		)
 	);
@@ -1251,7 +1256,8 @@ function igfs_settings_page() {
 				<tr>
 					<th scope="row"><?php esc_html_e( 'Lightbox', 'ig-feed-sync' ); ?></th>
 					<td><label><input name="igfs_lightbox" type="checkbox" value="1" <?php checked( get_option( 'igfs_lightbox', 1 ) ); ?>> <?php esc_html_e( 'Abrir as publicações numa janela no site', 'ig-feed-sync' ); ?></label>
-					<p class="description"><?php esc_html_e( 'Desligada, cada publicação abre no Instagram, num separador novo. No shortcode, lightbox="1" ou lightbox="0" muda só essa grelha.', 'ig-feed-sync' ); ?></p></td>
+					<p class="description"><?php esc_html_e( 'Desligada, cada publicação abre no Instagram, num separador novo. No shortcode, lightbox="1" ou lightbox="0" muda só essa grelha.', 'ig-feed-sync' ); ?></p>
+					<label><input name="igfs_lb_link_photos" type="checkbox" value="1" <?php checked( get_option( 'igfs_lb_link_photos', 0 ) ); ?>> <?php esc_html_e( 'Mostrar o botão "Ver no Instagram" também nas fotos (nos vídeos aparece sempre)', 'ig-feed-sync' ); ?></label></td>
 				</tr>
 				<tr>
 					<th scope="row"><label for="igfs_image_max"><?php esc_html_e( 'Tamanho máximo', 'ig-feed-sync' ); ?></label></th>
