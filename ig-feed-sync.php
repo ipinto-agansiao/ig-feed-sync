@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IG Feed Sync
  * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.4.1
+ * Version: 1.4.2
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.4.1' );
+define( 'IGFS_VERSION', '1.4.2' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -950,6 +950,7 @@ function igfs_feed_shortcode( $atts ) {
 						'consent' => __( 'Para ver o vídeo aqui, aceite os cookies de marketing.', 'ig-feed-sync' ),
 						'video'   => __( 'Se o vídeo não abrir, veja-o no Instagram.', 'ig-feed-sync' ),
 						'label'   => __( 'Publicação do Instagram', 'ig-feed-sync' ),
+						'post'    => __( 'Publicação', 'ig-feed-sync' ),
 					),
 				),
 				JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE

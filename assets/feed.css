@@ -266,6 +266,10 @@
 	.igfs__media img {
 		transition: none;
 	}
+
+	.igfs-lb[open] {
+		animation: none;
+	}
 }
 
 /* Lightbox */
@@ -290,12 +294,51 @@
 	background: rgba(0, 0, 0, 0.85);
 }
 
+.igfs-lb:focus {
+	outline: none;
+}
+
+/* O atributo hidden tem de ganhar aos display das setas. */
+.igfs-lb [hidden] {
+	display: none !important;
+}
+
+.igfs-lb[open] {
+	animation: igfs-lb-in 0.15s ease-out;
+}
+
+@keyframes igfs-lb-in {
+	from {
+		opacity: 0;
+	}
+}
+
+.igfs-lb__status {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+
+.igfs-lb__caption a {
+	color: inherit;
+	text-decoration: underline;
+	word-break: break-all;
+}
+
+.igfs-lb {
+	/* Metade da largura da caixa: as setas ficam encostadas a ela, mesmo em ecrãs muito largos. */
+	--igfs-lb-half: min(550px, calc(50% - 70px));
+}
+
 .igfs-lb__box {
 	position: absolute;
 	top: 50%;
 	left: 50%;
 	display: flex;
-	width: min(1100px, calc(100% - 140px));
+	width: calc(var(--igfs-lb-half) * 2);
 	max-height: 90vh;
 	overflow: hidden;
 	background: #fff;
@@ -343,6 +386,7 @@
 	display: flex;
 	align-items: center;
 	gap: 10px;
+	padding-right: 40px; /* Espaço para o botão fechar. */
 	padding-bottom: 12px;
 	border-bottom: 1px solid #e5e5e5;
 }
@@ -372,9 +416,9 @@
 .igfs-lb__link {
 	align-self: flex-start;
 	padding: 10px 18px;
-	border-radius: 4px;
-	background: #111;
-	color: #fff;
+	border-radius: var(--igfs-btn-radius, 4px);
+	background: var(--igfs-accent, #111);
+	color: var(--igfs-accent-text, #fff);
 	text-decoration: none;
 }
 
@@ -398,27 +442,51 @@
 }
 
 .igfs-lb__close {
-	top: 12px;
-	right: 16px;
-	width: 44px;
-	height: 44px;
-	font-size: 40px;
+	z-index: 2;
+	top: 8px;
+	right: 8px;
+	width: 40px;
+	height: 40px;
+	color: #111;
+}
+
+.igfs-lb__close svg {
+	width: 22px;
+	height: 22px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.5;
+	stroke-linecap: round;
+}
+
+.igfs-lb button.igfs-lb__close:focus-visible {
+	outline-color: #111;
+	outline-offset: 0;
 }
 
 .igfs-lb__nav {
 	top: 50%;
 	width: 48px;
-	height: 64px;
-	font-size: 56px;
+	height: 48px;
+	padding-bottom: 6px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.15);
+	font-size: 40px;
 	transform: translateY(-50%);
+	transition: background-color 0.2s ease;
+}
+
+.igfs-lb__nav:hover,
+.igfs-lb__nav:focus-visible {
+	background: rgba(255, 255, 255, 0.3);
 }
 
 .igfs-lb__nav--prev {
-	left: 12px;
+	left: calc(50% - var(--igfs-lb-half) - 60px);
 }
 
 .igfs-lb__nav--next {
-	right: 12px;
+	right: calc(50% - var(--igfs-lb-half) - 60px);
 }
 
 .igfs-lb__slide {
@@ -442,25 +510,34 @@
 
 .igfs-lb__dots {
 	position: absolute;
-	bottom: 12px;
+	bottom: 4px;
 	left: 0;
 	display: flex;
 	justify-content: center;
-	gap: 6px;
 	width: 100%;
 }
 
+/* Área de toque de 24 px (WCAG 2.5.8); o ponto visível é desenhado no centro. */
 .igfs-lb__dot {
-	width: 8px;
-	height: 8px;
+	display: grid;
+	place-items: center;
+	width: 24px;
+	height: 24px;
 	padding: 0;
 	border: 0;
-	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.5);
+	background: transparent;
 	cursor: pointer;
 }
 
-.igfs-lb__dot.is-active {
+.igfs-lb__dot::before {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.5);
+	content: "";
+}
+
+.igfs-lb__dot.is-active::before {
 	background: #fff;
 }
 
@@ -540,16 +617,16 @@
 
 	.igfs-lb__dots {
 		position: static;
-		padding: 10px 0 4px;
+		padding: 4px 0 0;
 	}
 
-	.igfs-lb__dot {
+	.igfs-lb__dot::before {
 		width: 6px;
 		height: 6px;
 		background: #c7c7c7;
 	}
 
-	.igfs-lb__dot.is-active {
+	.igfs-lb__dot.is-active::before {
 		background: #0095f6;
 	}
 
@@ -577,14 +654,11 @@
 	}
 
 	.igfs-lb__close {
-		z-index: 2;
-		top: 2px;
-		right: 4px;
-		color: #111;
-	}
-
-	.igfs-lb button.igfs-lb__close:focus-visible {
-		outline-color: #111;
+		position: fixed;
+		top: 6px;
+		right: 6px;
+		border-radius: 50%;
+		background: rgba(255, 255, 255, 0.85); /* Visível também por cima de imagens escuras. */
 	}
 
 	.igfs-lb__nav {

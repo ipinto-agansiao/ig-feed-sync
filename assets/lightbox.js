@@ -33,7 +33,7 @@
 	}
 
 	function build( t ) {
-		dialog = el( 'dialog', 'igfs-lb', { 'aria-label': t.label, 'data-lenis-prevent': '' } );
+		dialog = el( 'dialog', 'igfs-lb', { 'aria-label': t.label, 'data-lenis-prevent': '', tabindex: '-1' } );
 		els = {
 			close: el( 'button', 'igfs-lb__close', { type: 'button', 'aria-label': t.close } ),
 			prev: el( 'button', 'igfs-lb__nav igfs-lb__nav--prev', { type: 'button', 'aria-label': t.prev } ),
@@ -44,14 +44,21 @@
 			head: el( 'div', 'igfs-lb__head' ),
 			caption: el( 'p', 'igfs-lb__caption' ),
 			date: el( 'p', 'igfs-lb__date' ),
-			link: el( 'a', 'igfs-lb__link', { target: '_blank', rel: 'noopener' } )
+			link: el( 'a', 'igfs-lb__link', { target: '_blank', rel: 'noopener' } ),
+			// Anuncia ao leitor de ecrã a publicação e a imagem atuais.
+			status: el( 'p', 'igfs-lb__status', { 'aria-live': 'polite' } )
 		};
-		els.close.textContent = '×';
+		// Ícone desenhado (o "×" de texto fica descentrado consoante a fonte).
+		var svg = document.createElementNS( 'http://www.w3.org/2000/svg', 'svg' );
+		svg.setAttribute( 'viewBox', '0 0 24 24' );
+		svg.setAttribute( 'aria-hidden', 'true' );
+		svg.innerHTML = '<path d="M5 5l14 14M19 5L5 19"/>';
+		els.close.appendChild( svg );
 		els.prev.textContent = '‹';
 		els.next.textContent = '›';
-		els.side.append( els.head, els.caption, els.date, els.link );
-		els.box.append( els.media, els.side );
-		dialog.append( els.close, els.prev, els.next, els.box );
+		els.side.append( els.head, els.caption, els.date, els.link, els.status );
+		els.box.append( els.media, els.side, els.close ); // O × fica dentro da caixa, junto à publicação.
+		dialog.append( els.prev, els.next, els.box );
 		document.body.appendChild( dialog );
 
 		els.close.addEventListener( 'click', function () {
@@ -69,11 +76,12 @@
 				dialog.close();
 			}
 		} );
+		// Setas do teclado: como o deslizar (primeiro as imagens do carrossel, depois a publicação).
 		dialog.addEventListener( 'keydown', function ( e ) {
 			if ( 'ArrowLeft' === e.key ) {
-				show( index - 1 );
+				step( -1 );
 			} else if ( 'ArrowRight' === e.key ) {
-				show( index + 1 );
+				step( 1 );
 			}
 		} );
 		dialog.addEventListener( 'close', function () {
@@ -109,15 +117,50 @@
 		}
 	}
 
+	// Primeira linha da legenda, para o texto alternativo.
+	function altText( item ) {
+		var line = ( item.caption || '' ).split( '\n' )[ 0 ].trim();
+		return line.length > 120 ? line.slice( 0, 119 ) + '…' : line;
+	}
+
+	function announce() {
+		var item = feed.items[ index ];
+		var text = feed.i18n.post + ' ' + ( index + 1 ) + ' / ' + feed.items.length;
+		if ( 'Video' !== item.type && item.slides.length > 1 ) {
+			text += ', ' + feed.i18n.slide.toLowerCase() + ' ' + ( slide + 1 ) + ' / ' + item.slides.length;
+		}
+		els.status.textContent = text;
+	}
+
+	// Pré-carrega a imagem seguinte do carrossel e a 1.ª da publicação seguinte e da anterior.
+	function preload() {
+		var item = feed.items[ index ];
+		var total = feed.items.length;
+		var urls = [];
+		if ( item.slides[ slide + 1 ] ) {
+			urls.push( item.slides[ slide + 1 ][ 0 ] );
+		}
+		[ 1, -1 ].forEach( function ( d ) {
+			var other = feed.items[ ( index + d + total ) % total ];
+			if ( other.slides[ 0 ] ) {
+				urls.push( other.slides[ 0 ][ 0 ] );
+			}
+		} );
+		urls.forEach( function ( u ) {
+			( new Image() ).src = u;
+		} );
+	}
+
 	function renderSlide( n ) {
 		var item = feed.items[ index ];
 		var data = item.slides[ n ];
+		if ( ! data ) {
+			return; // Índice fora dos limites: mantém a imagem atual.
+		}
 		slide = n;
 		els.media.textContent = '';
-		if ( ! data ) {
-			return;
-		}
-		var img = el( 'img', 'igfs-lb__img', { src: data[ 0 ], width: data[ 1 ], height: data[ 2 ], alt: '' } );
+		var alt = altText( item ) + ( item.slides.length > 1 ? ' (' + feed.i18n.slide.toLowerCase() + ' ' + ( n + 1 ) + ' / ' + item.slides.length + ')' : '' );
+		var img = el( 'img', 'igfs-lb__img', { src: data[ 0 ], width: data[ 1 ], height: data[ 2 ], alt: alt } );
 		els.media.appendChild( img );
 		if ( item.slides.length > 1 ) {
 			var dots = el( 'div', 'igfs-lb__dots' );
@@ -146,6 +189,8 @@
 			} );
 			els.media.append( back, fwd, dots );
 		}
+		announce();
+		preload();
 	}
 
 	function renderVideo( item ) {
@@ -162,7 +207,7 @@
 		}
 		// Sem consentimento: capa e convite para ver no Instagram.
 		if ( item.slides[ 0 ] ) {
-			els.media.appendChild( el( 'img', 'igfs-lb__img', { src: item.slides[ 0 ][ 0 ], alt: '' } ) );
+			els.media.appendChild( el( 'img', 'igfs-lb__img', { src: item.slides[ 0 ][ 0 ], alt: altText( item ) } ) );
 		}
 		var note = el( 'div', 'igfs-lb__note' );
 		var text = el( 'p' );
@@ -193,12 +238,28 @@
 		var who = el( 'strong' );
 		who.textContent = feed.user + ' ';
 		els.caption.textContent = '';
-		els.caption.append( who, document.createTextNode( item.caption ) );
+		els.caption.appendChild( who );
+		// Links da legenda clicáveis (só http/https; o resto fica como texto).
+		( item.caption || '' ).split( /(https?:\/\/[^\s]+)/ ).forEach( function ( part, i ) {
+			if ( i % 2 ) {
+				var a = el( 'a', '', { href: part, target: '_blank', rel: 'noopener nofollow' } );
+				a.textContent = part;
+				els.caption.appendChild( a );
+			} else if ( part ) {
+				els.caption.appendChild( document.createTextNode( part ) );
+			}
+		} );
 		els.date.textContent = item.date + ( 'Video' === item.type ? ' · ' + feed.i18n.video : '' );
 		els.link.textContent = feed.i18n.open;
 		els.link.href = item.url;
 		els.prev.hidden = els.next.hidden = total < 2;
 		els.caption.scrollTop = 0;
+		els.box.scrollTop = 0;
+		if ( 'Video' === item.type ) {
+			slide = 0;
+			announce();
+			preload();
+		}
 	}
 
 	document.addEventListener( 'click', function ( e ) {
@@ -222,9 +283,15 @@
 			build( feed.i18n );
 		}
 		opener = link;
+		// Cores e cantos do botão das definições (a janela fica fora da grelha e não as herda).
+		var styles = getComputedStyle( root );
+		[ '--igfs-accent', '--igfs-accent-text', '--igfs-btn-radius' ].forEach( function ( v ) {
+			dialog.style.setProperty( v, styles.getPropertyValue( v ) );
+		} );
 		show( parseInt( link.getAttribute( 'data-igfs-i' ), 10 ) || 0 );
 		document.documentElement.classList.add( 'igfs-lb-open' );
 		dialog.showModal();
-		els.close.focus();
+		// Foco na janela (sem contorno visível); o teclado chega ao × com Tab.
+		dialog.focus();
 	} );
 }() );
