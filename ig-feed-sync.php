@@ -6,7 +6,7 @@
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
- * Update URI: https://github.com/GITHUB_USER/ig-feed-sync
+ * Update URI: https://github.com/ipinto-agansiao/ig-feed-sync
  *
  * @package IG_Feed_Sync
  */
@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 define( 'IGFS_VERSION', '1.2.0' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
-define( 'IGFS_UPDATE_REPO', 'https://github.com/GITHUB_USER/ig-feed-sync/' );
+define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
 
 /**
  * Atualizações a partir do GitHub: o WordPress mostra "Atualizar agora" quando há uma release nova.
