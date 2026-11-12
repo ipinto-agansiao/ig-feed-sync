@@ -224,6 +224,7 @@
 				title: feed.i18n.label,
 				allow: 'autoplay; encrypted-media; picture-in-picture',
 				allowfullscreen: '',
+				scrolling: 'no', // O vídeo já cabe inteiro; sem isto aparece a barra do rodapé do embed.
 				loading: 'lazy'
 			} ) );
 			return;
