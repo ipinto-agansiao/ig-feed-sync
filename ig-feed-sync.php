@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IG Feed Sync
  * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.4.5
+ * Version: 1.4.6
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.4.5' );
+define( 'IGFS_VERSION', '1.4.6' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -864,7 +864,7 @@ function igfs_feed_shortcode( $atts ) {
 	?>
 	<div class="igfs igfs--<?php echo esc_attr( $layout ); ?><?php echo $featured ? ' igfs--featured' : ''; ?><?php echo $tall ? ' igfs--featured-tall' : ''; ?><?php echo esc_attr( $btn_class ); ?>" style="--igfs-cols:<?php echo esc_attr( $cols ); ?>;--igfs-ratio:<?php echo esc_attr( $ratio ); ?>;--igfs-rest:<?php echo esc_attr( max( $cols - 1, 1 ) ); ?><?php echo absint( $atts['width'] ) ? ';--igfs-max-width:' . absint( $atts['width'] ) . 'px' : ''; ?><?php echo esc_attr( $btn_vars ); ?>">
 		<a class="igfs__header" href="<?php echo esc_url( $prof_url ); ?>" target="_blank" rel="noopener">
-			<?php if ( 'cards' === $layout && $avatar ) : ?>
+			<?php if ( $avatar ) : ?>
 				<?php echo wp_get_attachment_image( $avatar, 'thumbnail', false, array( 'class' => 'igfs__avatar', 'alt' => '', 'loading' => 'lazy' ) ); ?>
 			<?php else : ?>
 				<span class="igfs__avatar igfs__avatar--icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 8.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4zM17.3 5.5a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4zM12 2c-2.7 0-3 0-4.1.1C4.3 2.2 2.2 4.3 2.1 7.9 2 9 2 9.3 2 12s0 3 .1 4.1c.1 3.6 2.2 5.7 5.8 5.8 1.1.1 1.4.1 4.1.1s3 0 4.1-.1c3.6-.1 5.7-2.2 5.8-5.8.1-1.1.1-1.4.1-4.1s0-3-.1-4.1c-.1-3.6-2.2-5.7-5.8-5.8C15 2 14.7 2 12 2zm0 1.8c2.7 0 3 0 4 .1 2.6.1 3.9 1.4 4 4 .1 1 .1 1.4.1 4.1s0 3-.1 4c-.1 2.6-1.4 3.9-4 4-1 .1-1.3.1-4 .1s-3 0-4-.1c-2.6-.1-3.9-1.4-4-4-.1-1-.1-1.4-.1-4s0-3 .1-4c.1-2.6 1.4-3.9 4-4 1-.1 1.3-.1 4-.1z"/></svg></span>

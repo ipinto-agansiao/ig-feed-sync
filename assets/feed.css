@@ -338,10 +338,12 @@
 	object-fit: contain;
 }
 
+/* O embed do Instagram tem 54px de cabeçalho e o vídeo em 4:5: a largura segue a altura para o vídeo caber inteiro. */
 .igfs-lb__video {
+	--igfs-lb-vh: min(90vh, 760px);
 	display: block;
-	width: 100%;
-	height: min(90vh, 760px);
+	width: min(100%, max(240px, calc((var(--igfs-lb-vh) - 54px) * 0.8)));
+	height: var(--igfs-lb-vh);
 	border: 0;
 	background: #fff;
 }
@@ -614,8 +616,13 @@
 	}
 
 	.igfs-lb__video {
-		height: min(60vh, calc(100vh - 300px));
-		height: min(60dvh, calc(100dvh - 300px));
+		--igfs-lb-vh: min(60vh, calc(100vh - 300px));
+	}
+
+	@supports (height: 1dvh) {
+		.igfs-lb__video {
+			--igfs-lb-vh: min(60dvh, calc(100dvh - 300px));
+		}
 	}
 
 	.igfs-lb__bar {
