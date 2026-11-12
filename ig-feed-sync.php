@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IG Feed Sync
  * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.2.0
+ * Version: 1.3.0
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.2.0' );
+define( 'IGFS_VERSION', '1.3.0' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -79,7 +79,8 @@ add_action( 'add_meta_boxes', 'igfs_add_meta_box' );
  */
 function igfs_meta_box( $post ) {
 	wp_nonce_field( 'igfs_meta_save', 'igfs_meta_nonce' );
-	$type = (string) get_post_meta( $post->ID, '_igfs_type', true );
+	$type    = (string) get_post_meta( $post->ID, '_igfs_type', true );
+	$account = (string) get_post_meta( $post->ID, '_igfs_account', true );
 	?>
 	<p><label for="igfs_url"><?php esc_html_e( 'Link da publicação', 'ig-feed-sync' ); ?></label>
 	<input type="url" id="igfs_url" name="igfs_url" class="widefat" placeholder="https://www.instagram.com/p/..." value="<?php echo esc_attr( get_post_meta( $post->ID, '_igfs_url', true ) ); ?>"></p>
@@ -89,6 +90,14 @@ function igfs_meta_box( $post ) {
 		<option value="Sidecar" <?php selected( $type, 'Sidecar' ); ?>><?php esc_html_e( 'Carrossel', 'ig-feed-sync' ); ?></option>
 		<option value="Video" <?php selected( $type, 'Video' ); ?>><?php esc_html_e( 'Vídeo', 'ig-feed-sync' ); ?></option>
 	</select></p>
+	<?php if ( count( igfs_accounts() ) > 1 ) : ?>
+		<p><label for="igfs_account"><?php esc_html_e( 'Conta', 'ig-feed-sync' ); ?></label>
+		<select id="igfs_account" name="igfs_account" class="widefat">
+			<?php foreach ( array_keys( igfs_accounts() ) as $name ) : ?>
+				<option value="<?php echo esc_attr( $name ); ?>" <?php selected( $account, $name ); ?>><?php echo esc_html( $name ); ?></option>
+			<?php endforeach; ?>
+		</select></p>
+	<?php endif; ?>
 	<p class="description"><?php esc_html_e( 'A imagem da grelha é a imagem de destaque. A data de publicação define a posição na grelha.', 'ig-feed-sync' ); ?></p>
 	<?php
 }
@@ -107,6 +116,10 @@ function igfs_meta_save( $post_id ) {
 	}
 	$type = isset( $_POST['igfs_type'] ) ? sanitize_text_field( wp_unslash( $_POST['igfs_type'] ) ) : 'Image';
 	update_post_meta( $post_id, '_igfs_type', in_array( $type, array( 'Image', 'Sidecar', 'Video' ), true ) ? $type : 'Image' );
+	$account = igfs_account( isset( $_POST['igfs_account'] ) ? sanitize_text_field( wp_unslash( $_POST['igfs_account'] ) ) : '' );
+	if ( '' !== $account ) {
+		update_post_meta( $post_id, '_igfs_account', $account );
+	}
 
 	// O shortcode impede que o n8n duplique a publicação (e tira-a das "Publicações extra").
 	$urls = igfs_extra_urls( isset( $_POST['igfs_url'] ) ? esc_url_raw( wp_unslash( $_POST['igfs_url'] ) ) : '' );
@@ -116,6 +129,72 @@ function igfs_meta_save( $post_id ) {
 	}
 }
 add_action( 'save_post_' . IGFS_CPT, 'igfs_meta_save' );
+
+/* -------------------------------------------------------------------------
+ * Contas: a principal (Conta do Instagram) e as "Outras contas".
+ * O estado de cada conta (última publicação, perfil) fica em opções próprias;
+ * as da principal mantêm os nomes antigos, por compatibilidade.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Contas configuradas, [ conta => data inicial ]. A primeira é a principal.
+ *
+ * @return array<string,string>
+ */
+function igfs_accounts() {
+	$accounts = array();
+	$main     = (string) get_option( 'igfs_username', '' );
+	if ( '' !== $main ) {
+		$accounts[ $main ] = (string) get_option( 'igfs_start_date', '' );
+	}
+	foreach ( igfs_parse_accounts( (string) get_option( 'igfs_other_accounts', '' ) ) as $name => $date ) {
+		if ( ! isset( $accounts[ $name ] ) ) {
+			$accounts[ $name ] = $date;
+		}
+	}
+	return $accounts;
+}
+
+/**
+ * Lê "conta AAAA-MM-DD", uma por linha. Linhas inválidas são ignoradas.
+ *
+ * @param string $raw Texto.
+ * @return array<string,string>
+ */
+function igfs_parse_accounts( $raw ) {
+	$accounts = array();
+	foreach ( preg_split( '/\R/', $raw ) as $line ) {
+		if ( preg_match( '/^\s*@?([A-Za-z0-9._]{1,30})\s+(\d{4}-\d{2}-\d{2})\s*$/', $line, $m ) ) {
+			$accounts[ $m[1] ] = $m[2];
+		}
+	}
+	return $accounts;
+}
+
+/**
+ * Conta pedida, ou a principal quando vazia. Devolve '' se não estiver configurada.
+ *
+ * @param string $requested Nome da conta.
+ * @return string
+ */
+function igfs_account( $requested ) {
+	$accounts = igfs_accounts();
+	if ( '' === (string) $requested ) {
+		return $accounts ? (string) array_key_first( $accounts ) : '';
+	}
+	return isset( $accounts[ $requested ] ) ? (string) $requested : '';
+}
+
+/**
+ * Nome da opção de uma conta (a principal usa o nome antigo).
+ *
+ * @param string $name    Opção base (ex.: igfs_last_post_at).
+ * @param string $account Conta.
+ * @return string
+ */
+function igfs_opt( $name, $account ) {
+	return (string) get_option( 'igfs_username', '' ) === $account ? $name : $name . '__' . strtolower( $account );
+}
 
 /* -------------------------------------------------------------------------
  * REST API (usada pelo n8n)
@@ -164,6 +243,12 @@ function igfs_register_routes() {
 			'methods'             => 'GET',
 			'callback'            => 'igfs_rest_state',
 			'permission_callback' => 'igfs_rest_auth',
+			'args'                => array(
+				'account' => array(
+					'type'    => 'string',
+					'default' => '',
+				),
+			),
 		)
 	);
 
@@ -214,6 +299,10 @@ function igfs_register_routes() {
 					'type'    => 'boolean',
 					'default' => false,
 				),
+				'account'   => array(
+					'type'    => 'string',
+					'default' => '',
+				),
 			),
 		)
 	);
@@ -258,26 +347,33 @@ add_action( 'rest_api_init', 'igfs_register_routes' );
 
 /**
  * Estado para o n8n: conta a seguir, desde quando pedir e se está ativo.
- * Regista a hora do pedido.
+ * Regista a hora do pedido. Parâmetro opcional ?account= (vazio = conta principal).
  *
- * @return WP_REST_Response
+ * @param WP_REST_Request $request Pedido.
+ * @return WP_REST_Response|WP_Error
  */
-function igfs_rest_state() {
+function igfs_rest_state( WP_REST_Request $request ) {
+	$username = igfs_account( (string) $request['account'] );
+	if ( '' === $username && '' !== (string) $request['account'] ) {
+		return new WP_Error( 'igfs_account', 'Conta não configurada neste site.', array( 'status' => 404 ) );
+	}
+
 	$now = time();
 	update_option( 'igfs_last_sync_at', $now, false );
 
-	$last_post = (int) get_option( 'igfs_last_post_at', 0 );
+	$accounts  = igfs_accounts();
+	$last_post = '' !== $username ? (int) get_option( igfs_opt( 'igfs_last_post_at', $username ), 0 ) : 0;
 	// Pede desde o dia da última publicação guardada (não da hora do pedido): se uma
 	// execução falhar a meio, nada fica por importar. Os repetidos são ignorados.
-	$since = $last_post ? gmdate( 'Y-m-d', $last_post ) : (string) get_option( 'igfs_start_date', '' );
+	$since = $last_post ? gmdate( 'Y-m-d', $last_post ) : (string) ( $accounts[ $username ] ?? '' );
 
-	$username = (string) get_option( 'igfs_username', '' );
-
-	// Publicações extra (ex.: colaborações de outra conta) ainda não guardadas.
+	// Publicações extra (ex.: colaborações de outra conta) ainda não guardadas. Só na conta principal.
 	$extra = array();
-	foreach ( igfs_extra_urls() as $shortcode => $url ) {
-		if ( ! igfs_find_post( $shortcode ) ) {
-			$extra[] = $url;
+	if ( '' !== $username && array_key_first( $accounts ) === $username ) {
+		foreach ( igfs_extra_urls() as $shortcode => $url ) {
+			if ( ! igfs_find_post( $shortcode ) ) {
+				$extra[] = $url;
+			}
 		}
 	}
 
@@ -305,6 +401,11 @@ function igfs_rest_save_post( WP_REST_Request $request ) {
 	$ts        = strtotime( $request['timestamp'] );
 	$title     = igfs_title_from_caption( $caption, $shortcode );
 
+	$account = igfs_account( (string) $request['account'] );
+	if ( '' === $account ) {
+		return new WP_Error( 'igfs_account', 'Conta não configurada neste site.', array( 'status' => 400 ) );
+	}
+
 	// As extra não contam para a data da última publicação: não podem saltar publicações da conta.
 	$bump    = ! $request['extra'];
 	$post_id = igfs_find_post( $shortcode );
@@ -323,7 +424,7 @@ function igfs_rest_save_post( WP_REST_Request $request ) {
 		);
 		update_post_meta( $post_id, '_igfs_type', $request['type'] );
 		if ( $bump ) {
-			igfs_bump_last_post( $ts );
+			igfs_bump_last_post( $ts, $account );
 		}
 		return rest_ensure_response( array( 'status' => 'updated', 'id' => $post_id ) );
 	}
@@ -340,6 +441,7 @@ function igfs_rest_save_post( WP_REST_Request $request ) {
 				'_igfs_shortcode' => $shortcode,
 				'_igfs_url'       => $request['url'],
 				'_igfs_type'      => $request['type'],
+				'_igfs_account'   => $account,
 			),
 		),
 		true
@@ -357,7 +459,7 @@ function igfs_rest_save_post( WP_REST_Request $request ) {
 	set_post_thumbnail( $post_id, $image_id );
 
 	if ( $bump ) {
-		igfs_bump_last_post( $ts );
+		igfs_bump_last_post( $ts, $account );
 	}
 
 	do_action( 'litespeed_purge_all' );
@@ -406,11 +508,13 @@ function igfs_extra_urls( $raw = null ) {
 /**
  * Guarda a data da publicação mais recente recebida (novas e já existentes).
  *
- * @param int $ts Timestamp da publicação.
+ * @param int    $ts      Timestamp da publicação.
+ * @param string $account Conta.
  */
-function igfs_bump_last_post( $ts ) {
-	if ( $ts > (int) get_option( 'igfs_last_post_at', 0 ) ) {
-		update_option( 'igfs_last_post_at', $ts, false );
+function igfs_bump_last_post( $ts, $account ) {
+	$option = igfs_opt( 'igfs_last_post_at', $account );
+	if ( $ts > (int) get_option( $option, 0 ) ) {
+		update_option( $option, $ts, false );
 	}
 }
 
@@ -419,10 +523,15 @@ function igfs_bump_last_post( $ts ) {
  * (o URL do Instagram muda a cada pedido).
  *
  * @param WP_REST_Request $request Pedido.
- * @return WP_REST_Response
+ * @return WP_REST_Response|WP_Error
  */
 function igfs_rest_save_profile( WP_REST_Request $request ) {
-	$old     = (array) get_option( 'igfs_profile', array() );
+	$account = igfs_account( (string) $request['username'] );
+	if ( '' === $account ) {
+		return new WP_Error( 'igfs_account', 'Conta não configurada neste site.', array( 'status' => 400 ) );
+	}
+	$option  = igfs_opt( 'igfs_profile', $account );
+	$old     = (array) get_option( $option, array() );
 	$profile = array(
 		'username'    => $request['username'],
 		'full_name'   => $request['full_name'],
@@ -444,7 +553,7 @@ function igfs_rest_save_profile( WP_REST_Request $request ) {
 		}
 	}
 
-	update_option( 'igfs_profile', $profile, false );
+	update_option( $option, $profile, false );
 	return rest_ensure_response( array( 'status' => 'saved' ) );
 }
 
@@ -549,6 +658,7 @@ function igfs_feed_shortcode( $atts ) {
 			'featured' => '',
 			'ratio'    => '',
 			'width'    => '',
+			'account'  => '',
 		),
 		$atts,
 		'igfs_feed'
@@ -564,10 +674,30 @@ function igfs_feed_shortcode( $atts ) {
 		$ratio = '1';
 	}
 
+	$account = igfs_account( ltrim( (string) $atts['account'], '@' ) );
+	if ( '' === $account ) {
+		return '';
+	}
+	$is_main = array_key_first( igfs_accounts() ) === $account;
+	// Publicações antigas (antes de haver várias contas) não têm conta: são da principal.
+	$by_account = array(
+		'key'   => '_igfs_account',
+		'value' => $account,
+	);
+	$meta_query = $is_main ? array(
+		'relation' => 'OR',
+		$by_account,
+		array(
+			'key'     => '_igfs_account',
+			'compare' => 'NOT EXISTS',
+		),
+	) : array( $by_account );
+
 	$query = new WP_Query(
 		array(
 			'post_type'              => IGFS_CPT,
 			'post_status'            => 'publish',
+			'meta_query'             => $meta_query, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 			'posts_per_page'         => min( max( absint( $atts['num'] ), 1 ), 50 ),
 			'no_found_rows'          => true,
 			'update_post_term_cache' => false,
@@ -579,10 +709,10 @@ function igfs_feed_shortcode( $atts ) {
 
 	wp_enqueue_style( 'igfs-feed' );
 
-	$profile  = (array) get_option( 'igfs_profile', array() );
-	$username = ! empty( $profile['username'] ) ? $profile['username'] : (string) get_option( 'igfs_username', '' );
+	$profile  = (array) get_option( igfs_opt( 'igfs_profile', $account ), array() );
+	$username = ! empty( $profile['username'] ) ? $profile['username'] : $account;
 	$title    = '' !== $atts['title'] ? $atts['title'] : '@' . $username;
-	$avatar   = (int) get_option( 'igfs_avatar_id', 0 );
+	$avatar   = $is_main ? (int) get_option( 'igfs_avatar_id', 0 ) : 0; // A imagem escolhida nas definições é da principal.
 	if ( ! $avatar && ! empty( $profile['avatar_id'] ) ) {
 		$avatar = (int) $profile['avatar_id'];
 	}
@@ -670,6 +800,19 @@ function igfs_register_settings() {
 	register_setting( 'igfs', 'igfs_start_date', array( 'sanitize_callback' => 'igfs_sanitize_date' ) );
 	register_setting(
 		'igfs',
+		'igfs_other_accounts',
+		array(
+			'sanitize_callback' => function ( $value ) {
+				$lines = array();
+				foreach ( igfs_parse_accounts( (string) $value ) as $name => $date ) {
+					$lines[] = $name . ' ' . $date;
+				}
+				return implode( "\n", $lines );
+			},
+		)
+	);
+	register_setting(
+		'igfs',
 		'igfs_extra_urls',
 		array(
 			'sanitize_callback' => function ( $value ) {
@@ -698,6 +841,31 @@ function igfs_register_settings() {
 	);
 }
 add_action( 'admin_init', 'igfs_register_settings' );
+
+/**
+ * Data "Importar desde" alterada: a próxima execução volta a pedir a partir dela.
+ * As publicações já guardadas são reconhecidas pelo shortcode e não se duplicam.
+ */
+function igfs_start_date_changed() {
+	delete_option( 'igfs_last_post_at' );
+}
+add_action( 'update_option_igfs_start_date', 'igfs_start_date_changed' );
+
+/**
+ * Outras contas: quando a data de uma conta muda, a próxima execução volta a pedir a partir dela.
+ *
+ * @param string $old Valor antigo.
+ * @param string $new Valor novo.
+ */
+function igfs_other_accounts_changed( $old, $new ) {
+	$before = igfs_parse_accounts( (string) $old );
+	foreach ( igfs_parse_accounts( (string) $new ) as $name => $date ) {
+		if ( ( $before[ $name ] ?? '' ) !== $date ) {
+			delete_option( igfs_opt( 'igfs_last_post_at', $name ) );
+		}
+	}
+}
+add_action( 'update_option_igfs_other_accounts', 'igfs_other_accounts_changed', 10, 2 );
 
 /**
  * Nome de utilizador do Instagram, sem @.
@@ -771,7 +939,6 @@ function igfs_settings_page() {
 	}
 	$fmt       = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
 	$last_sync = (int) get_option( 'igfs_last_sync_at', 0 );
-	$last_post = (int) get_option( 'igfs_last_post_at', 0 );
 	$count     = wp_count_posts( IGFS_CPT );
 	?>
 	<div class="wrap">
@@ -789,7 +956,12 @@ function igfs_settings_page() {
 				<tr>
 					<th scope="row"><label for="igfs_start_date"><?php esc_html_e( 'Importar desde', 'ig-feed-sync' ); ?></label></th>
 					<td><input name="igfs_start_date" id="igfs_start_date" type="date" value="<?php echo esc_attr( get_option( 'igfs_start_date', '' ) ); ?>">
-					<p class="description"><?php esc_html_e( 'Usada só na primeira importação. Depois o pedido começa no dia da última publicação guardada.', 'ig-feed-sync' ); ?></p></td>
+					<p class="description"><?php esc_html_e( 'Ao mudar esta data, a próxima execução do n8n volta a pedir a partir dela (sem duplicar o que já existe). Depois, os pedidos começam no dia da última publicação guardada.', 'ig-feed-sync' ); ?></p></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="igfs_other_accounts"><?php esc_html_e( 'Outras contas', 'ig-feed-sync' ); ?></label></th>
+					<td><textarea name="igfs_other_accounts" id="igfs_other_accounts" rows="3" class="large-text code" placeholder="outraconta 2026-06-01"><?php echo esc_textarea( get_option( 'igfs_other_accounts', '' ) ); ?></textarea>
+					<p class="description"><?php esc_html_e( 'Opcional. Uma conta por linha: o nome e a data de início (AAAA-MM-DD). Cada conta tem a sua grelha: [igfs_feed account="outraconta"]. No n8n, acrescentar uma linha por conta na lista Clientes, com account.', 'ig-feed-sync' ); ?></p></td>
 				</tr>
 				<tr>
 					<th scope="row"><label for="igfs_extra_urls"><?php esc_html_e( 'Publicações extra', 'ig-feed-sync' ); ?></label></th>
@@ -833,7 +1005,13 @@ function igfs_settings_page() {
 			</tr>
 			<tr>
 				<th scope="row"><?php esc_html_e( 'Publicação mais recente', 'ig-feed-sync' ); ?></th>
-				<td><?php echo $last_post ? esc_html( wp_date( $fmt, $last_post ) ) : '—'; ?> (<?php echo esc_html( (int) $count->publish ); ?> <?php esc_html_e( 'publicadas', 'ig-feed-sync' ); ?>)</td>
+				<td>
+					<?php foreach ( array_keys( igfs_accounts() ) as $name ) : ?>
+						<?php $last = (int) get_option( igfs_opt( 'igfs_last_post_at', $name ), 0 ); ?>
+						<?php echo esc_html( $name ); ?>: <?php echo $last ? esc_html( wp_date( $fmt, $last ) ) : '—'; ?><br>
+					<?php endforeach; ?>
+					(<?php echo esc_html( (int) $count->publish ); ?> <?php esc_html_e( 'publicadas no total', 'ig-feed-sync' ); ?>)
+				</td>
 			</tr>
 		</table>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" onsubmit="return confirm('<?php echo esc_js( __( 'A chave atual deixa de funcionar. Continuar?', 'ig-feed-sync' ) ); ?>');">

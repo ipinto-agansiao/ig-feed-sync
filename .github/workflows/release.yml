@@ -17,7 +17,7 @@ jobs:
       - name: Criar zip
         run: |
           mkdir -p build/ig-feed-sync
-          rsync -a --exclude '.git*' --exclude '.github' --exclude 'build' --exclude 'n8n' ./ build/ig-feed-sync/
+          rsync -a --exclude '.git*' --exclude '.github' --exclude 'build' --exclude 'n8n' --exclude 'AGENTS.md' --exclude 'CLAUDE.md' ./ build/ig-feed-sync/
           cd build && zip -rq ig-feed-sync.zip ig-feed-sync
       - name: Juntar à release
         run: gh release upload "${{ github.event.release.tag_name }}" build/ig-feed-sync.zip --clobber

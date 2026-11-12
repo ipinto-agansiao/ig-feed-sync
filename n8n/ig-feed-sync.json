@@ -23,7 +23,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Um cliente por linha. Para desligar um cliente sem o apagar: active: false.\n// site: URL do site, sem / no fim. key: chave em Definições > IG Feed Sync desse site.\nconst clientes = [\n  { site: 'https://www.rcplastica.pt', key: 'COLAR_AQUI_A_CHAVE', active: true },\n  // { site: 'https://outrocliente.pt', key: '...', active: true },\n];\n\nreturn clientes.filter(c => c.active).map(c => ({ json: { site: c.site, key: c.key } }));"
+        "jsCode": "// Um cliente por linha. Para desligar um cliente sem o apagar: active: false.\n// site: URL do site, sem / no fim. key: chave em Definições > IG Feed Sync desse site.\n// account (opcional): para as \"Outras contas\" do mesmo site, uma linha por conta. Sem account = conta principal.\nconst clientes = [\n  { site: 'https://www.rcplastica.pt', key: 'COLAR_AQUI_A_CHAVE', active: true },\n  // { site: 'https://outrocliente.pt', key: '...', active: true },\n  // { site: 'https://outrocliente.pt', key: '...', account: 'outraconta', active: true },\n];\n\nreturn clientes.filter(c => c.active).map(c => ({ json: { site: c.site, key: c.key, account: c.account || '' } }));"
       },
       "id": "e1b873ed-8056-547f-82ed-3f6e0f80cf4e",
       "name": "Clientes",
@@ -75,7 +75,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $json.site }}/wp-json/igfs/v1/state",
+        "url": "={{ $json.site }}/wp-json/igfs/v1/state?account={{ encodeURIComponent($json.account || '') }}",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
@@ -108,7 +108,7 @@
           },
           "conditions": [
             {
-              "id": "64488458-0968-4e56-900f-f731ceec12c3",
+              "id": "06c45fcb-956b-4dce-892e-62e08e201315",
               "leftValue": "={{ $json.enabled }}",
               "rightValue": "",
               "operator": {
@@ -215,7 +215,7 @@
           },
           "conditions": [
             {
-              "id": "62555288-9b8e-47e4-bd99-8b09642f2754",
+              "id": "cf61e501-dcd4-4eb2-9ebd-910bd052224d",
               "leftValue": "={{ ['READY','RUNNING'].includes($json.data.status) }}",
               "rightValue": "",
               "operator": {
@@ -252,7 +252,7 @@
         1120,
         700
       ],
-      "webhookId": "6d6ad02a-55e1-4c0d-bebd-0535780929b8"
+      "webhookId": "8c7579e8-3991-4562-af51-786d5f10f571"
     },
     {
       "parameters": {
@@ -284,7 +284,7 @@
           },
           "conditions": [
             {
-              "id": "e408120d-f6fc-490c-96c2-742fa9e1109d",
+              "id": "d000b9ed-f964-4593-9b21-ce4b7d113c0c",
               "leftValue": "={{ $json.data.status }}",
               "rightValue": "SUCCEEDED",
               "operator": {
@@ -350,7 +350,7 @@
           },
           "conditions": [
             {
-              "id": "75852ed0-98b1-4227-a274-26ccc7946e66",
+              "id": "614953ac-b29b-4089-8567-10bacc7f6b6c",
               "leftValue": "={{ $json.shortCode }}",
               "rightValue": "",
               "operator": {
@@ -421,7 +421,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ shortcode: $json.shortCode, url: $json.url, caption: $json.caption || '', type: $json.type, timestamp: $json.timestamp, image_url: $json.displayUrl }) }}"
+        "jsonBody": "={{ JSON.stringify({ shortcode: $json.shortCode, url: $json.url, caption: $json.caption || '', type: $json.type, timestamp: $json.timestamp, image_url: $json.displayUrl, account: $('Cliente').first().json.account || '' }) }}"
       },
       "id": "c56b6525-f66e-563e-94ab-9b62f975b9ec",
       "name": "WP: guardar publicação",
@@ -443,7 +443,7 @@
           },
           "conditions": [
             {
-              "id": "e82d56f1-10b7-4be5-859b-fb414b4fb21c",
+              "id": "5fa7e5f3-b207-4367-9382-fa846c532592",
               "leftValue": "={{ ($json.extra_urls || []).length }}",
               "rightValue": 0,
               "operator": {
@@ -499,7 +499,7 @@
           },
           "conditions": [
             {
-              "id": "3cc5c39f-89fa-4d6a-a5ee-e4720c756638",
+              "id": "74e8e231-ac39-42d9-baac-0559d9ea611e",
               "leftValue": "={{ $json.shortCode }}",
               "rightValue": "",
               "operator": {

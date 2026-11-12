@@ -49,7 +49,21 @@ Como funciona:
 5. Executar o workflow uma vez à mão (**Execute workflow**) para a primeira importação.
 6. Pôr o shortcode no tema ou numa página.
 
-Cada site guarda a data da última publicação recebida. Os pedidos seguintes só trazem o que é novo.
+Cada site guarda a data da última publicação recebida. Os pedidos seguintes só trazem o que é novo. Para ir buscar publicações mais antigas, muda a data de "Importar desde" e guarda. A execução seguinte volta a pedir a partir dessa data e as publicações que já existem não são duplicadas.
+
+## Várias contas no mesmo site
+
+1. Em **Definições > IG Feed Sync > Outras contas**, escrever uma conta por linha, com o nome e a data de início:
+   `outraconta 2026-06-01`
+2. No nó **Clientes** do n8n, acrescentar uma linha para essa conta, com o mesmo site e a mesma chave:
+   `{ site: 'https://site.pt', key: 'CHAVE', account: 'outraconta', active: true },`
+3. Mostrar a grelha dessa conta com `[igfs_feed account="outraconta" ...]`. Sem `account`, a grelha mostra a conta principal.
+
+Regras:
+
+- Cada conta tem a sua data de última publicação e o seu perfil.
+- A "Imagem do perfil" das definições e as "Publicações extra" só se aplicam à conta principal.
+- Nas publicações adicionadas à mão, escolhe-se a conta na caixa "Instagram".
 
 ## Colaborações e publicações com restrição de idade
 
