@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IG Feed Sync
  * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.3.2
+ * Version: 1.4.0
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.3.2' );
+define( 'IGFS_VERSION', '1.4.0' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -303,6 +303,12 @@ function igfs_register_routes() {
 					'type'    => 'string',
 					'default' => '',
 				),
+				'images'    => array(
+					'type'     => 'array',
+					'default'  => array(),
+					'maxItems' => 20,
+					'items'    => array( 'type' => 'string' ),
+				),
 			),
 		)
 	);
@@ -403,7 +409,7 @@ function igfs_rest_state( WP_REST_Request $request ) {
 function igfs_rest_save_post( WP_REST_Request $request ) {
 	$shortcode = $request['shortcode'];
 	$caption   = $request['caption'];
-	$ts        = strtotime( $request['timestamp'] );
+	$ts        = min( strtotime( $request['timestamp'] ), time() ); // Data no futuro ficaria "agendada".
 	$title     = igfs_title_from_caption( $caption, $shortcode );
 
 	$account = igfs_account( (string) $request['account'] );
@@ -428,6 +434,9 @@ function igfs_rest_save_post( WP_REST_Request $request ) {
 			)
 		);
 		update_post_meta( $post_id, '_igfs_type', $request['type'] );
+		if ( count( (array) $request['images'] ) > 1 && ! get_post_meta( $post_id, '_igfs_images', true ) ) {
+			igfs_save_gallery( $post_id, $request['images'], $shortcode, $title );
+		}
 		if ( $bump ) {
 			igfs_bump_last_post( $ts, $account );
 		}
@@ -462,6 +471,7 @@ function igfs_rest_save_post( WP_REST_Request $request ) {
 		return new WP_Error( 'igfs_image', $image_id->get_error_message(), array( 'status' => 502 ) );
 	}
 	set_post_thumbnail( $post_id, $image_id );
+	igfs_save_gallery( $post_id, $request['images'], $shortcode, $title );
 
 	if ( $bump ) {
 		igfs_bump_last_post( $ts, $account );
@@ -482,7 +492,7 @@ function igfs_find_post( $shortcode ) {
 	$ids = get_posts(
 		array(
 			'post_type'        => IGFS_CPT,
-			'post_status'      => array( 'publish', 'draft', 'pending', 'private', 'trash' ),
+			'post_status'      => array( 'publish', 'future', 'draft', 'pending', 'private', 'trash' ),
 			'meta_key'         => '_igfs_shortcode', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
 			'meta_value'       => $shortcode, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
 			'fields'           => 'ids',
@@ -633,18 +643,99 @@ function igfs_sideload( $url, $post_id, $name, $desc ) {
 		return new WP_Error( 'igfs_mime', 'O ficheiro descarregado não é uma imagem.' );
 	}
 
+	list( $tmp, $ext ) = igfs_optimize_image( $tmp, $exts[ $mime ] );
+
+	// Só os tamanhos que a grelha e o admin usam (o tema regista mais de 10).
+	add_filter( 'intermediate_image_sizes_advanced', 'igfs_needed_sizes' );
+	add_filter( 'big_image_size_threshold', '__return_false' );
 	$id = media_handle_sideload(
 		array(
-			'name'     => sanitize_file_name( $name ) . '.' . $exts[ $mime ],
+			'name'     => sanitize_file_name( $name ) . '.' . $ext,
 			'tmp_name' => $tmp,
 		),
 		$post_id,
 		$desc
 	);
+	remove_filter( 'intermediate_image_sizes_advanced', 'igfs_needed_sizes' );
+	remove_filter( 'big_image_size_threshold', '__return_false' );
 	if ( is_wp_error( $id ) ) {
 		wp_delete_file( $tmp );
 	}
 	return $id;
+}
+
+/**
+ * Reduz a imagem (máx. 1080 px, a resolução do Instagram) e converte para WebP (ou JPEG
+ * se o servidor não suportar WebP), qualidade 80. Se falhar, fica a imagem original.
+ *
+ * @param string $file Ficheiro temporário.
+ * @param string $ext  Extensão original.
+ * @return array{0:string,1:string} Ficheiro e extensão.
+ */
+function igfs_optimize_image( $file, $ext ) {
+	$editor = wp_get_image_editor( $file );
+	if ( is_wp_error( $editor ) ) {
+		return array( $file, $ext );
+	}
+	$max = (int) apply_filters( 'igfs_image_max', igfs_image_setting( 'igfs_image_max' ) );
+	$editor->resize( $max, $max, false ); // Não aumenta imagens mais pequenas.
+	$editor->set_quality( (int) apply_filters( 'igfs_image_quality', igfs_image_setting( 'igfs_image_quality' ) ) );
+	$webp  = wp_image_editor_supports( array( 'mime_type' => 'image/webp' ) );
+	$new   = $webp ? 'webp' : 'jpg';
+	$saved = $editor->save( $file . '-igfs.' . $new, $webp ? 'image/webp' : 'image/jpeg' );
+	if ( is_wp_error( $saved ) || empty( $saved['path'] ) ) {
+		return array( $file, $ext );
+	}
+	wp_delete_file( $file );
+	return array( $saved['path'], $new );
+}
+
+/**
+ * Tamanho máximo e qualidade das imagens (definições), dentro de limites seguros.
+ *
+ * @param string     $option igfs_image_max ou igfs_image_quality.
+ * @param mixed|null $value  Valor a validar (por defeito, o guardado).
+ * @return int
+ */
+function igfs_image_setting( $option, $value = null ) {
+	$limits = array(
+		'igfs_image_max'     => array( 1080, 480, 2160 ),
+		'igfs_image_quality' => array( 80, 50, 95 ),
+	);
+	list( $default, $min, $max ) = $limits[ $option ];
+	$value = null === $value ? get_option( $option, $default ) : $value;
+	return min( max( (int) $value ? (int) $value : $default, $min ), $max );
+}
+
+/**
+ * Tamanhos gerados nas imagens do feed.
+ *
+ * @param array $sizes Tamanhos registados.
+ * @return array
+ */
+function igfs_needed_sizes( $sizes ) {
+	return array_intersect_key( $sizes, array_flip( array( 'thumbnail', 'medium_large' ) ) );
+}
+
+/**
+ * Descarrega as imagens extra de um carrossel (a 1.ª é a capa, já guardada).
+ *
+ * @param int    $post_id   Publicação.
+ * @param array  $urls      URLs das imagens do carrossel.
+ * @param string $shortcode Shortcode do Instagram.
+ * @param string $title     Título.
+ */
+function igfs_save_gallery( $post_id, $urls, $shortcode, $title ) {
+	$ids = array();
+	foreach ( array_slice( array_values( (array) $urls ), 1, 9 ) as $i => $url ) {
+		$id = igfs_sideload( (string) $url, $post_id, 'ig-' . $shortcode . '-' . ( $i + 2 ), $title );
+		if ( ! is_wp_error( $id ) ) { // Uma imagem extra que falhe não impede a publicação.
+			$ids[] = (int) $id;
+		}
+	}
+	if ( $ids ) {
+		update_post_meta( $post_id, '_igfs_images', $ids );
+	}
 }
 
 /* -------------------------------------------------------------------------
@@ -657,6 +748,16 @@ function igfs_sideload( $url, $post_id, $name, $desc ) {
 function igfs_register_assets() {
 	// Versão pela data do ficheiro: o browser recebe sempre o CSS atualizado.
 	wp_register_style( 'igfs-feed', plugins_url( 'assets/feed.css', __FILE__ ), array(), (string) filemtime( __DIR__ . '/assets/feed.css' ) );
+	wp_register_script(
+		'igfs-lightbox',
+		plugins_url( 'assets/lightbox.js', __FILE__ ),
+		array(),
+		(string) filemtime( __DIR__ . '/assets/lightbox.js' ),
+		array(
+			'in_footer' => true,
+			'strategy'  => 'defer',
+		)
+	);
 }
 add_action( 'wp_enqueue_scripts', 'igfs_register_assets' );
 
@@ -678,6 +779,7 @@ function igfs_feed_shortcode( $atts ) {
 			'ratio'    => '',
 			'width'    => '',
 			'account'  => '',
+			'lightbox' => null, // null = definição do plugin; lightbox="1" ou "0" sobrepõe.
 		),
 		$atts,
 		'igfs_feed'
@@ -727,6 +829,11 @@ function igfs_feed_shortcode( $atts ) {
 	}
 
 	wp_enqueue_style( 'igfs-feed' );
+	$lightbox = null === $atts['lightbox'] ? (bool) get_option( 'igfs_lightbox', 1 ) : '0' !== (string) $atts['lightbox'];
+	if ( $lightbox ) {
+		wp_enqueue_script( 'igfs-lightbox' );
+	}
+	$items = array(); // Dados de cada publicação para a lightbox.
 
 	$profile  = (array) get_option( igfs_opt( 'igfs_profile', $account ), array() );
 	$username = ! empty( $profile['username'] ) ? $profile['username'] : $account;
@@ -779,6 +886,23 @@ function igfs_feed_shortcode( $atts ) {
 			while ( $query->have_posts() ) :
 				$query->the_post();
 				$type = (string) get_post_meta( get_the_ID(), '_igfs_type', true );
+				if ( $lightbox ) {
+					$slides = array();
+					foreach ( array_merge( array( (int) get_post_thumbnail_id() ), array_map( 'intval', (array) get_post_meta( get_the_ID(), '_igfs_images', true ) ) ) as $att ) {
+						$src = $att ? wp_get_attachment_image_src( $att, 'large' ) : false; // 'large' não existe nas novas: devolve a original (1080 px).
+						if ( $src ) {
+							$slides[] = array( $src[0], (int) $src[1], (int) $src[2] );
+						}
+					}
+					$items[] = array(
+						'url'     => (string) get_post_meta( get_the_ID(), '_igfs_url', true ),
+						'sc'      => (string) get_post_meta( get_the_ID(), '_igfs_shortcode', true ),
+						'type'    => $type,
+						'caption' => get_the_content(),
+						'date'    => get_the_date(),
+						'slides'  => $slides,
+					);
+				}
 				?>
 				<li class="igfs__item">
 					<?php if ( 'cards' === $layout ) : ?>
@@ -792,7 +916,7 @@ function igfs_feed_shortcode( $atts ) {
 							</span>
 						</div>
 					<?php endif; ?>
-					<a class="igfs__media" href="<?php echo esc_url( get_post_meta( get_the_ID(), '_igfs_url', true ) ); ?>" target="_blank" rel="noopener">
+					<a class="igfs__media" href="<?php echo esc_url( get_post_meta( get_the_ID(), '_igfs_url', true ) ); ?>" target="_blank" rel="noopener"<?php echo $lightbox ? ' data-igfs-i="' . esc_attr( count( $items ) - 1 ) . '"' : ''; ?>>
 						<?php
 						echo get_the_post_thumbnail(
 							null,
@@ -809,6 +933,30 @@ function igfs_feed_shortcode( $atts ) {
 				</li>
 			<?php endwhile; ?>
 		</ul>
+		<?php if ( $lightbox ) : ?>
+			<script type="application/json" class="igfs-data">
+			<?php
+			echo wp_json_encode(
+				array(
+					'user'   => $username,
+					'avatar' => $avatar ? (string) wp_get_attachment_image_url( $avatar, 'thumbnail' ) : '',
+					'items'  => $items,
+					'i18n'   => array(
+						'close'   => __( 'Fechar', 'ig-feed-sync' ),
+						'prev'    => __( 'Publicação anterior', 'ig-feed-sync' ),
+						'next'    => __( 'Publicação seguinte', 'ig-feed-sync' ),
+						'slide'   => __( 'Imagem', 'ig-feed-sync' ),
+						'open'    => __( 'Ver no Instagram', 'ig-feed-sync' ),
+						'consent' => __( 'Para ver o vídeo aqui, aceite os cookies de marketing.', 'ig-feed-sync' ),
+						'video'   => __( 'Se o vídeo não abrir, veja-o no Instagram.', 'ig-feed-sync' ),
+						'label'   => __( 'Publicação do Instagram', 'ig-feed-sync' ),
+					),
+				),
+				JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE
+			);
+			?>
+			</script>
+		<?php endif; ?>
 		<?php if ( '' !== $btn_text ) : ?>
 			<a class="igfs__button" href="<?php echo esc_url( $prof_url ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $btn_text ); ?></a>
 		<?php endif; ?>
@@ -861,6 +1009,26 @@ function igfs_register_settings() {
 			},
 		)
 	);
+	register_setting(
+		'igfs',
+		'igfs_lightbox',
+		array(
+			'sanitize_callback' => function ( $value ) {
+				return $value ? 1 : 0;
+			},
+		)
+	);
+	foreach ( array( 'igfs_image_max', 'igfs_image_quality' ) as $image_option ) {
+		register_setting(
+			'igfs',
+			$image_option,
+			array(
+				'sanitize_callback' => function ( $value ) use ( $image_option ) {
+					return igfs_image_setting( $image_option, $value );
+				},
+			)
+		);
+	}
 	register_setting( 'igfs', 'igfs_btn_text', array( 'sanitize_callback' => 'sanitize_text_field' ) );
 	register_setting( 'igfs', 'igfs_btn_bg', array( 'sanitize_callback' => 'sanitize_hex_color' ) );
 	register_setting( 'igfs', 'igfs_btn_color', array( 'sanitize_callback' => 'sanitize_hex_color' ) );
@@ -1075,6 +1243,24 @@ function igfs_settings_page() {
 						</p>
 						<p class="description"><?php esc_html_e( 'Substitui a foto que vem do Instagram. Vazio = usa a do Instagram.', 'ig-feed-sync' ); ?></p>
 					</td>
+				</tr>
+				<tr>
+					<th scope="row" colspan="2"><h2 style="margin:0"><?php esc_html_e( 'Imagens', 'ig-feed-sync' ); ?></h2></th>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Lightbox', 'ig-feed-sync' ); ?></th>
+					<td><label><input name="igfs_lightbox" type="checkbox" value="1" <?php checked( get_option( 'igfs_lightbox', 1 ) ); ?>> <?php esc_html_e( 'Abrir as publicações numa janela no site', 'ig-feed-sync' ); ?></label>
+					<p class="description"><?php esc_html_e( 'Desligada, cada publicação abre no Instagram, num separador novo. No shortcode, lightbox="1" ou lightbox="0" muda só essa grelha.', 'ig-feed-sync' ); ?></p></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="igfs_image_max"><?php esc_html_e( 'Tamanho máximo', 'ig-feed-sync' ); ?></label></th>
+					<td><input name="igfs_image_max" id="igfs_image_max" type="number" min="480" max="2160" step="10" class="small-text" value="<?php echo esc_attr( igfs_image_setting( 'igfs_image_max' ) ); ?>"> px
+					<p class="description"><?php esc_html_e( 'Lado maior das imagens guardadas (480 a 2160). 1080 é a resolução do Instagram: acima disso a imagem não ganha qualidade, só peso.', 'ig-feed-sync' ); ?></p></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="igfs_image_quality"><?php esc_html_e( 'Qualidade', 'ig-feed-sync' ); ?></label></th>
+					<td><input name="igfs_image_quality" id="igfs_image_quality" type="number" min="50" max="95" class="small-text" value="<?php echo esc_attr( igfs_image_setting( 'igfs_image_quality' ) ); ?>">
+					<p class="description"><?php esc_html_e( 'Compressão WebP de 50 a 95 (80 recomendado). Mais alto = imagens mais nítidas e mais pesadas. Aplica-se às imagens importadas a partir daqui.', 'ig-feed-sync' ); ?></p></td>
 				</tr>
 				<tr>
 					<th scope="row" colspan="2"><h2 style="margin:0"><?php esc_html_e( 'Botão "Ver no Instagram"', 'ig-feed-sync' ); ?></h2></th>

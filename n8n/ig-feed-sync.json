@@ -23,7 +23,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Um cliente por linha. Para desligar um cliente sem o apagar: active: false.\n// site: URL do site, sem / no fim. key: chave em Definições > IG Feed Sync desse site.\n// account (opcional): para as \"Outras contas\" do mesmo site, uma linha por conta. Sem account = conta principal.\nconst clientes = [\n  { site: 'https://www.rcplastica.pt', key: 'COLAR_AQUI_A_CHAVE', active: true },\n  // { site: 'https://outrocliente.pt', key: '...', active: true },\n  // { site: 'https://outrocliente.pt', key: '...', account: 'outraconta', active: true },\n];\n\nreturn clientes.filter(c => c.active).map(c => ({ json: { site: c.site, key: c.key, account: c.account || '' } }));"
+        "jsCode": "// Um cliente por linha. Para desligar um cliente sem o apagar: active: false.\n// site: URL do site, sem / no fim. key: chave em Definições > IG Feed Sync desse site.\n// account (opcional): para as \"Outras contas\" do mesmo site, uma linha por conta. Sem account = conta principal.\n// actor (opcional): 'intropix' para contas com restrição de idade (actor intropix/instagram-posts-reels-scraper). Sem actor = Apify normal.\nconst clientes = [\n  { site: 'https://www.rcplastica.pt', key: 'COLAR_AQUI_A_CHAVE', active: true },\n  // { site: 'https://outrocliente.pt', key: '...', active: true },\n  // { site: 'https://outrocliente.pt', key: '...', account: 'outraconta', active: true },\n  // { site: 'https://outrocliente.pt', key: '...', account: 'contacom18', actor: 'intropix', active: true },\n];\n\nreturn clientes.filter(c => c.active).map(c => ({ json: { site: c.site, key: c.key, account: c.account || '', actor: c.actor || 'apify' } }));"
       },
       "id": "e1b873ed-8056-547f-82ed-3f6e0f80cf4e",
       "name": "Clientes",
@@ -108,7 +108,7 @@
           },
           "conditions": [
             {
-              "id": "e0a059d4-3312-4873-bbe4-a69b66140ba4",
+              "id": "9cad32cc-5320-44f0-94c1-60ed4f576f02",
               "leftValue": "={{ $json.enabled }}",
               "rightValue": "",
               "operator": {
@@ -134,6 +134,42 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ce28e2e8-d66b-4914-8219-708837a51cc0",
+              "leftValue": "={{ $('Cliente').first().json.actor === 'intropix' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "c98e7280-72a8-502c-8569-76b06f30af36",
+      "name": "Perfil pelo Apify?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        200
+      ],
+      "notes": "Com o actor intropix, o perfil vem nas próprias publicações."
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://api.apify.com/v2/acts/apify~instagram-profile-scraper/run-sync-get-dataset-items",
         "authentication": "genericCredentialType",
@@ -150,7 +186,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        680,
+        780,
         200
       ],
       "alwaysOutputData": true
@@ -194,7 +230,7 @@
           },
           "conditions": [
             {
-              "id": "8184fe67-1c61-4da5-b402-ac4bc62a7c64",
+              "id": "a7654961-2e76-41c7-a91d-2a0c1b189d66",
               "leftValue": "={{ (() => { const p = $('Apify: perfil').first().json; if (p.error) return p.restrictionReason || p.errorDescription || p.error; if (!p.id) return 'Conta não encontrada no Instagram.'; if (p.private) return 'A conta é privada.'; return ''; })() !== '' }}",
               "rightValue": "",
               "operator": {
@@ -234,7 +270,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.apify.com/v2/acts/apify~instagram-post-scraper/runs?waitForFinish=60",
+        "url": "=https://api.apify.com/v2/acts/{{ $('Cliente').first().json.actor === 'intropix' ? 'intropix~instagram-posts-reels-scraper' : 'apify~instagram-post-scraper' }}/runs?waitForFinish=60",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {
@@ -242,7 +278,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ username: [$json.username], onlyPostsNewerThan: $json.since, resultsLimit: 1000 }) }}"
+        "jsonBody": "={{ JSON.stringify($('Cliente').first().json.actor === 'intropix' ? { usernames: [$json.username], sinceDate: $json.since, maxPostsPerAccount: 1000, includeViews: false } : { username: [$json.username], onlyPostsNewerThan: $json.since, resultsLimit: 1000 }) }}"
       },
       "id": "1143850d-83e5-5792-b5e0-948cbf865a23",
       "name": "Apify: iniciar posts",
@@ -251,7 +287,8 @@
       "position": [
         680,
         500
-      ]
+      ],
+      "notes": "Actor conforme a linha da lista Clientes (actor: 'intropix' para contas com restrição de idade)."
     },
     {
       "parameters": {
@@ -264,7 +301,7 @@
           },
           "conditions": [
             {
-              "id": "12ff6708-b660-49c2-abcd-ca79ac971d7e",
+              "id": "381b655e-1520-41ff-8f00-4cec486a69bb",
               "leftValue": "={{ ['READY','RUNNING'].includes($json.data.status) }}",
               "rightValue": "",
               "operator": {
@@ -301,7 +338,7 @@
         1120,
         700
       ],
-      "webhookId": "6cf03b35-421c-40db-90de-ac86ea7ef168"
+      "webhookId": "a9ebad1e-b03d-4b64-9f4f-b48989c3d46d"
     },
     {
       "parameters": {
@@ -333,7 +370,7 @@
           },
           "conditions": [
             {
-              "id": "b1822b2c-459c-4329-9b3a-a9d309b5b2f1",
+              "id": "b7583c84-0bd6-4dbf-a856-b5afe2e29fb9",
               "leftValue": "={{ $json.data.status }}",
               "rightValue": "SUCCEEDED",
               "operator": {
@@ -390,6 +427,20 @@
     },
     {
       "parameters": {
+        "jsCode": "// Converte o resultado do actor intropix para o formato do Apify normal. O do Apify passa sem mudanças.\nconst out = [];\nfor (const { json: p } of $input.all()) {\n  if (p.shortCode || !p.shortcode) { out.push({ json: p }); continue; }\n  const media = (p.media || []).map(m => m.media_type === 'video' ? m.cover_url : m.media_url).filter(Boolean);\n  const type = p.post_type === 'carousel' ? 'Sidecar' : (p.post_type === 'image' ? 'Image' : 'Video');\n  out.push({ json: { shortCode: p.shortcode, url: p.permalink, caption: p.caption || '', type, timestamp: p.taken_at, displayUrl: media[0] || '', images: type === 'Sidecar' ? media : [] } });\n}\nreturn out;"
+      },
+      "id": "c6f999a5-e355-51ad-b2a6-b34312b5165c",
+      "name": "Normalizar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        320
+      ],
+      "notes": "Põe os resultados dos dois actores no mesmo formato."
+    },
+    {
+      "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
@@ -399,12 +450,76 @@
           },
           "conditions": [
             {
-              "id": "d731228d-009c-4409-8e4c-a4480f0ee582",
-              "leftValue": "={{ $json.shortCode }}",
+              "id": "6a9b62ef-e4f0-474e-8b99-821065d14337",
+              "leftValue": "={{ $('Cliente').first().json.actor === 'intropix' && !!$json.username }}",
               "rightValue": "",
               "operator": {
-                "type": "string",
-                "operation": "notEmpty",
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "ec74610b-a2fa-5334-9eb3-22f49452cbf9",
+      "name": "Perfil intropix?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1560,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cliente').first().json.site }}/wp-json/igfs/v1/profile",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-IGFS-Key",
+              "value": "={{ $('Cliente').first().json.key }}"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ username: $('WP: estado').first().json.username, full_name: $json.full_name || '', followers: $json.follower_count || 0, posts_count: 0, avatar_url: $json.profile_pic_url || '' }) }}"
+      },
+      "id": "c1bce96d-0b32-5e4b-8b9b-880d5e970829",
+      "name": "WP: perfil (intropix)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1780,
+        140
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4ea37ecb-ebc0-4bb8-839b-e9db4450a4a9",
+              "leftValue": "={{ $json.shortCode && $json.displayUrl }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
                 "singleValue": true
               }
             }
@@ -419,7 +534,7 @@
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.2,
       "position": [
-        1560,
+        1780,
         320
       ]
     },
@@ -440,7 +555,7 @@
       "type": "n8n-nodes-base.sort",
       "typeVersion": 1,
       "position": [
-        1780,
+        2000,
         320
       ],
       "notes": "Por ordem cronológica: se falhar a meio, a próxima execução retoma sem buracos."
@@ -470,14 +585,14 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ shortcode: $json.shortCode, url: $json.url, caption: $json.caption || '', type: $json.type, timestamp: $json.timestamp, image_url: $json.displayUrl, account: $('Cliente').first().json.account || '' }) }}"
+        "jsonBody": "={{ JSON.stringify({ shortcode: $json.shortCode, url: $json.url, caption: $json.caption || '', type: $json.type, timestamp: $json.timestamp, image_url: $json.displayUrl, account: $('Cliente').first().json.account || '', images: $json.type === 'Sidecar' ? (($json.images && $json.images.length) ? $json.images : ($json.childPosts || []).map(c => c.displayUrl)).filter(Boolean).slice(0, 10) : [] }) }}"
       },
       "id": "c56b6525-f66e-563e-94ab-9b62f975b9ec",
       "name": "WP: guardar publicação",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2000,
+        2220,
         320
       ]
     },
@@ -492,7 +607,7 @@
           },
           "conditions": [
             {
-              "id": "963c79c7-bd5a-41df-9795-cdd56956dbf0",
+              "id": "09735288-61cf-476f-992b-cab00ed84884",
               "leftValue": "={{ ($json.extra_urls || []).length }}",
               "rightValue": 0,
               "operator": {
@@ -548,7 +663,7 @@
           },
           "conditions": [
             {
-              "id": "6ca59faa-2056-4007-9e18-1847047d11b0",
+              "id": "c1699f74-9f8e-4318-a7aa-6fb5f92636a9",
               "leftValue": "={{ $json.shortCode }}",
               "rightValue": "",
               "operator": {
@@ -658,7 +773,7 @@
       "main": [
         [
           {
-            "node": "Apify: perfil",
+            "node": "Perfil pelo Apify?",
             "type": "main",
             "index": 0
           },
@@ -669,6 +784,17 @@
           },
           {
             "node": "Tem extras?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perfil pelo Apify?": {
+      "main": [
+        [
+          {
+            "node": "Apify: perfil",
             "type": "main",
             "index": 0
           }
@@ -781,7 +907,34 @@
       "main": [
         [
           {
+            "node": "Normalizar",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Perfil intropix?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar": {
+      "main": [
+        [
+          {
             "node": "Só publicações",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perfil intropix?": {
+      "main": [
+        [
+          {
+            "node": "WP: perfil (intropix)",
             "type": "main",
             "index": 0
           }
