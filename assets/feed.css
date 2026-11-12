@@ -3,7 +3,7 @@
 	--igfs-gap: 18px;
 	--igfs-accent: #111;
 	--igfs-accent-text: #fff;
-	--igfs-muted: #777;
+	--igfs-muted: #666; /* 5,7:1 sobre branco (WCAG AA pede 4,5:1). */
 	--igfs-card: #fff;
 	width: 100%;
 	max-width: var(--igfs-max-width, none);
@@ -181,6 +181,7 @@
 .igfs__meta time {
 	color: var(--igfs-muted);
 	font-size: 0.75em;
+	font-weight: 400;
 }
 
 .igfs__button {
