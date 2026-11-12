@@ -189,7 +189,11 @@
 		var user = el( 'strong' );
 		user.textContent = feed.user;
 		els.head.appendChild( user );
-		els.caption.textContent = item.caption;
+		// Como no Instagram: nome da conta a negrito no início da legenda.
+		var who = el( 'strong' );
+		who.textContent = feed.user + ' ';
+		els.caption.textContent = '';
+		els.caption.append( who, document.createTextNode( item.caption ) );
 		els.date.textContent = item.date + ( 'Video' === item.type ? ' · ' + feed.i18n.video : '' );
 		els.link.textContent = feed.i18n.open;
 		els.link.href = item.url;
