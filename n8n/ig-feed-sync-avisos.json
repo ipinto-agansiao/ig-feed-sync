@@ -1,0 +1,63 @@
+{
+  "name": "IG Feed Sync - Avisos",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "69b416bb-decf-57ab-ba21-ab8ec6194841",
+      "name": "Quando falha",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.brevo.com/v3/smtp/email",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  sender: { name: 'IG Feed Sync - Alertas', email: 'REMETENTE@dominio.pt' },\n  to: [ { email: 'DESTINO@dominio.pt' } ],\n  subject: '🚨 IG Feed Sync: ' + String($json.execution.error.message || 'erro').slice(0, 120),\n  textContent: 'Falhou uma execução do workflow \"' + $json.workflow.name + '\".\\n\\nErro: ' + ($json.execution.error.message || '—') + '\\nNó: ' + ($json.execution.lastNodeExecuted || '—') + '\\n\\nVer a execução: ' + ($json.execution.url || '—')\n}) }}",
+        "options": {}
+      },
+      "id": "04fb5eb0-5e06-57cb-9d90-8d470ff2baff",
+      "name": "Enviar email (Brevo)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "notes": "Escolher a credencial Brevo-Api (Header Auth). No JSON, trocar REMETENTE@dominio.pt (remetente validado no Brevo) e DESTINO@dominio.pt."
+    }
+  ],
+  "connections": {
+    "Quando falha": {
+      "main": [
+        [
+          {
+            "node": "Enviar email (Brevo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IG Feed Sync
  * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.3.0
+ * Version: 1.3.1
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.3.0' );
+define( 'IGFS_VERSION', '1.3.1' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -339,6 +339,11 @@ function igfs_register_routes() {
 					'type'    => 'string',
 					'default' => '',
 				),
+				'error'       => array(
+					'type'              => 'string',
+					'default'           => '',
+					'sanitize_callback' => 'sanitize_text_field',
+				),
 			),
 		)
 	);
@@ -530,6 +535,20 @@ function igfs_rest_save_profile( WP_REST_Request $request ) {
 	if ( '' === $account ) {
 		return new WP_Error( 'igfs_account', 'Conta não configurada neste site.', array( 'status' => 400 ) );
 	}
+	// Erro do Instagram (conta inexistente, privada, com restrição de idade): fica registado
+	// e aparece nas definições e no painel; o perfil guardado não é alterado.
+	update_option(
+		igfs_opt( 'igfs_status', $account ),
+		array(
+			'at'    => time(),
+			'error' => (string) $request['error'],
+		),
+		false
+	);
+	if ( '' !== (string) $request['error'] ) {
+		return rest_ensure_response( array( 'status' => 'error_saved' ) );
+	}
+
 	$option  = igfs_opt( 'igfs_profile', $account );
 	$old     = (array) get_option( $option, array() );
 	$profile = array(
@@ -654,7 +673,7 @@ function igfs_feed_shortcode( $atts ) {
 			'num'    => 8,
 			'cols'   => 4,
 			'title'    => '',
-			'button'   => '',
+			'button'   => null, // null = texto das definições; button="" esconde o botão.
 			'featured' => '',
 			'ratio'    => '',
 			'width'    => '',
@@ -722,9 +741,21 @@ function igfs_feed_shortcode( $atts ) {
 		'Video'   => '<svg class="igfs__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15L19.5 12z"/></svg>',
 	);
 
+	// Botão: texto e aspeto das definições (o atributo button do shortcode sobrepõe o texto).
+	$btn_text  = null === $atts['button'] ? (string) get_option( 'igfs_btn_text', '' ) : (string) $atts['button'];
+	$btn_vars  = '';
+	$btn_class = '';
+	foreach ( array( 'igfs_btn_bg' => '--igfs-accent', 'igfs_btn_color' => '--igfs-accent-text' ) as $opt => $var ) {
+		$color = sanitize_hex_color( (string) get_option( $opt, '' ) );
+		$btn_vars .= $color ? ';' . $var . ':' . $color : '';
+	}
+	$btn_vars  .= ';--igfs-btn-radius:' . absint( get_option( 'igfs_btn_radius', 0 ) ) . 'px';
+	$btn_class .= 'outline' === get_option( 'igfs_btn_style' ) ? ' igfs--btn-outline' : '';
+	$btn_class .= get_option( 'igfs_btn_upper' ) ? ' igfs--btn-upper' : '';
+
 	ob_start();
 	?>
-	<div class="igfs igfs--<?php echo esc_attr( $layout ); ?><?php echo $featured ? ' igfs--featured' : ''; ?><?php echo $tall ? ' igfs--featured-tall' : ''; ?>" style="--igfs-cols:<?php echo esc_attr( $cols ); ?>;--igfs-ratio:<?php echo esc_attr( $ratio ); ?>;--igfs-rest:<?php echo esc_attr( max( $cols - 1, 1 ) ); ?><?php echo absint( $atts['width'] ) ? ';--igfs-max-width:' . absint( $atts['width'] ) . 'px' : ''; ?>">
+	<div class="igfs igfs--<?php echo esc_attr( $layout ); ?><?php echo $featured ? ' igfs--featured' : ''; ?><?php echo $tall ? ' igfs--featured-tall' : ''; ?><?php echo esc_attr( $btn_class ); ?>" style="--igfs-cols:<?php echo esc_attr( $cols ); ?>;--igfs-ratio:<?php echo esc_attr( $ratio ); ?>;--igfs-rest:<?php echo esc_attr( max( $cols - 1, 1 ) ); ?><?php echo absint( $atts['width'] ) ? ';--igfs-max-width:' . absint( $atts['width'] ) . 'px' : ''; ?><?php echo esc_attr( $btn_vars ); ?>">
 		<a class="igfs__header" href="<?php echo esc_url( $prof_url ); ?>" target="_blank" rel="noopener">
 			<?php if ( 'cards' === $layout && $avatar ) : ?>
 				<?php echo wp_get_attachment_image( $avatar, 'thumbnail', false, array( 'class' => 'igfs__avatar', 'alt' => '', 'loading' => 'lazy' ) ); ?>
@@ -778,8 +809,8 @@ function igfs_feed_shortcode( $atts ) {
 				</li>
 			<?php endwhile; ?>
 		</ul>
-		<?php if ( '' !== $atts['button'] ) : ?>
-			<a class="igfs__button" href="<?php echo esc_url( $prof_url ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $atts['button'] ); ?></a>
+		<?php if ( '' !== $btn_text ) : ?>
+			<a class="igfs__button" href="<?php echo esc_url( $prof_url ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $btn_text ); ?></a>
 		<?php endif; ?>
 	</div>
 	<?php
@@ -830,6 +861,28 @@ function igfs_register_settings() {
 			},
 		)
 	);
+	register_setting( 'igfs', 'igfs_btn_text', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+	register_setting( 'igfs', 'igfs_btn_bg', array( 'sanitize_callback' => 'sanitize_hex_color' ) );
+	register_setting( 'igfs', 'igfs_btn_color', array( 'sanitize_callback' => 'sanitize_hex_color' ) );
+	register_setting( 'igfs', 'igfs_btn_radius', array( 'sanitize_callback' => 'absint' ) );
+	register_setting(
+		'igfs',
+		'igfs_btn_style',
+		array(
+			'sanitize_callback' => function ( $value ) {
+				return 'outline' === $value ? 'outline' : 'fill';
+			},
+		)
+	);
+	register_setting(
+		'igfs',
+		'igfs_btn_upper',
+		array(
+			'sanitize_callback' => function ( $value ) {
+				return $value ? 1 : 0;
+			},
+		)
+	);
 	register_setting(
 		'igfs',
 		'igfs_enabled',
@@ -850,6 +903,21 @@ function igfs_start_date_changed() {
 	delete_option( 'igfs_last_post_at' );
 }
 add_action( 'update_option_igfs_start_date', 'igfs_start_date_changed' );
+
+/**
+ * Conta principal alterada: a data e o perfil eram da conta antiga.
+ * A foto antiga é apagada e a próxima execução importa a conta nova desde a data inicial.
+ */
+function igfs_username_changed() {
+	$profile = (array) get_option( 'igfs_profile', array() );
+	if ( ! empty( $profile['avatar_id'] ) ) {
+		wp_delete_attachment( (int) $profile['avatar_id'], true );
+	}
+	delete_option( 'igfs_profile' );
+	delete_option( 'igfs_last_post_at' );
+	delete_option( 'igfs_status' );
+}
+add_action( 'update_option_igfs_username', 'igfs_username_changed' );
 
 /**
  * Outras contas: quando a data de uma conta muda, a próxima execução volta a pedir a partir dela.
@@ -899,6 +967,9 @@ function igfs_admin_assets( $hook ) {
 		return;
 	}
 	wp_enqueue_media();
+	wp_enqueue_style( 'wp-color-picker' );
+	wp_enqueue_script( 'wp-color-picker' );
+	wp_add_inline_script( 'wp-color-picker', 'jQuery(function($){$(".igfs-color").wpColorPicker();});' );
 	wp_register_script( 'igfs-admin', false, array( 'media-editor' ), IGFS_VERSION, true );
 	wp_enqueue_script( 'igfs-admin' );
 	wp_add_inline_script(
@@ -907,6 +978,30 @@ function igfs_admin_assets( $hook ) {
 	);
 }
 add_action( 'admin_enqueue_scripts', 'igfs_admin_assets' );
+
+/**
+ * Aviso no painel quando o Instagram devolveu um erro para uma conta.
+ */
+function igfs_admin_notices() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+	foreach ( array_keys( igfs_accounts() ) as $name ) {
+		$status = (array) get_option( igfs_opt( 'igfs_status', $name ), array() );
+		if ( empty( $status['error'] ) ) {
+			continue;
+		}
+		printf(
+			'<div class="notice notice-error"><p><strong>IG Feed Sync:</strong> %1$s <code>%2$s</code>: %3$s <a href="%4$s">%5$s</a></p></div>',
+			esc_html__( 'o Instagram não devolveu as publicações da conta', 'ig-feed-sync' ),
+			esc_html( $name ),
+			esc_html( $status['error'] ),
+			esc_url( admin_url( 'options-general.php?page=igfs' ) ),
+			esc_html__( 'Ver definições', 'ig-feed-sync' )
+		);
+	}
+}
+add_action( 'admin_notices', 'igfs_admin_notices' );
 
 /**
  * Menu.
@@ -944,7 +1039,7 @@ function igfs_settings_page() {
 	<div class="wrap">
 		<h1>IG Feed Sync</h1>
 		<?php if ( isset( $_GET['key'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
-			<div class="notice notice-success"><p><?php esc_html_e( 'Chave nova gerada. Atualize a credencial no n8n.', 'ig-feed-sync' ); ?></p></div>
+			<div class="notice notice-success"><p><?php esc_html_e( 'Chave nova gerada. Atualize a chave na lista Clientes do n8n.', 'ig-feed-sync' ); ?></p></div>
 		<?php endif; ?>
 		<form method="post" action="options.php">
 			<?php settings_fields( 'igfs' ); ?>
@@ -982,6 +1077,31 @@ function igfs_settings_page() {
 					</td>
 				</tr>
 				<tr>
+					<th scope="row" colspan="2"><h2 style="margin:0"><?php esc_html_e( 'Botão "Ver no Instagram"', 'ig-feed-sync' ); ?></h2></th>
+				</tr>
+				<tr>
+					<th scope="row"><label for="igfs_btn_text"><?php esc_html_e( 'Texto', 'ig-feed-sync' ); ?></label></th>
+					<td><input name="igfs_btn_text" id="igfs_btn_text" type="text" class="regular-text" value="<?php echo esc_attr( get_option( 'igfs_btn_text', '' ) ); ?>" placeholder="Siga-nos no Instagram">
+					<p class="description"><?php esc_html_e( 'Aparece por baixo de todas as grelhas e leva ao perfil da conta. Vazio = sem botão. No shortcode, button="..." muda o texto e button="" esconde o botão.', 'ig-feed-sync' ); ?></p></td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Cores', 'ig-feed-sync' ); ?></th>
+					<td>
+						<label><?php esc_html_e( 'Fundo', 'ig-feed-sync' ); ?><br><input name="igfs_btn_bg" type="text" class="igfs-color" value="<?php echo esc_attr( get_option( 'igfs_btn_bg', '#111111' ) ); ?>" data-default-color="#111111"></label><br>
+						<label><?php esc_html_e( 'Texto', 'ig-feed-sync' ); ?><br><input name="igfs_btn_color" type="text" class="igfs-color" value="<?php echo esc_attr( get_option( 'igfs_btn_color', '#ffffff' ) ); ?>" data-default-color="#ffffff"></label>
+						<p class="description"><?php esc_html_e( 'A cor de fundo também é usada no ícone do cabeçalho do layout highlight.', 'ig-feed-sync' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Estilo', 'ig-feed-sync' ); ?></th>
+					<td>
+						<label><input type="radio" name="igfs_btn_style" value="fill" <?php checked( 'outline' !== get_option( 'igfs_btn_style' ) ); ?>> <?php esc_html_e( 'Cheio', 'ig-feed-sync' ); ?></label>&nbsp;&nbsp;
+						<label><input type="radio" name="igfs_btn_style" value="outline" <?php checked( 'outline', get_option( 'igfs_btn_style' ) ); ?>> <?php esc_html_e( 'Só contorno', 'ig-feed-sync' ); ?></label><br>
+						<label><?php esc_html_e( 'Cantos arredondados', 'ig-feed-sync' ); ?> <input name="igfs_btn_radius" type="number" min="0" max="60" class="small-text" value="<?php echo esc_attr( (int) get_option( 'igfs_btn_radius', 0 ) ); ?>"> px</label><br>
+						<label><input name="igfs_btn_upper" type="checkbox" value="1" <?php checked( get_option( 'igfs_btn_upper' ) ); ?>> <?php esc_html_e( 'Texto em maiúsculas', 'ig-feed-sync' ); ?></label>
+					</td>
+				</tr>
+				<tr>
 					<th scope="row"><?php esc_html_e( 'Sincronização', 'ig-feed-sync' ); ?></th>
 					<td><label><input name="igfs_enabled" type="checkbox" value="1" <?php checked( get_option( 'igfs_enabled' ) ); ?>> <?php esc_html_e( 'Ativa (o n8n pode escrever)', 'ig-feed-sync' ); ?></label></td>
 				</tr>
@@ -996,20 +1116,43 @@ function igfs_settings_page() {
 				<td><code><?php echo esc_html( home_url() ); ?></code></td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Chave (header X-IGFS-Key)', 'ig-feed-sync' ); ?></th>
-				<td><input type="text" class="large-text code" readonly onfocus="this.select()" value="<?php echo esc_attr( get_option( 'igfs_key', '' ) ); ?>"></td>
+				<th scope="row"><?php esc_html_e( 'Chave do site (para o n8n)', 'ig-feed-sync' ); ?></th>
+				<td><input type="text" class="large-text code" readonly onfocus="this.select()" value="<?php echo esc_attr( get_option( 'igfs_key', '' ) ); ?>">
+				<p class="description"><?php esc_html_e( 'Colar no campo key da lista Clientes do n8n. É a mesma para todas as contas deste site.', 'ig-feed-sync' ); ?></p></td>
 			</tr>
 			<tr>
 				<th scope="row"><?php esc_html_e( 'Último pedido do n8n', 'ig-feed-sync' ); ?></th>
 				<td><?php echo $last_sync ? esc_html( wp_date( $fmt, $last_sync ) ) : '—'; ?></td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Publicação mais recente', 'ig-feed-sync' ); ?></th>
+				<th scope="row"><?php esc_html_e( 'Contas', 'ig-feed-sync' ); ?></th>
 				<td>
 					<?php foreach ( array_keys( igfs_accounts() ) as $name ) : ?>
-						<?php $last = (int) get_option( igfs_opt( 'igfs_last_post_at', $name ), 0 ); ?>
-						<?php echo esc_html( $name ); ?>: <?php echo $last ? esc_html( wp_date( $fmt, $last ) ) : '—'; ?><br>
+						<?php
+						$last    = (int) get_option( igfs_opt( 'igfs_last_post_at', $name ), 0 );
+						$prof    = (array) get_option( igfs_opt( 'igfs_profile', $name ), array() );
+						$status  = (array) get_option( igfs_opt( 'igfs_status', $name ), array() );
+						?>
+						<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+							<?php echo ! empty( $prof['avatar_id'] ) ? wp_get_attachment_image( (int) $prof['avatar_id'], array( 48, 48 ), false, array( 'style' => 'border-radius:50%;width:48px;height:48px;object-fit:cover' ) ) : '<span style="display:inline-block;width:48px;height:48px;border-radius:50%;background:#ddd"></span>'; ?>
+							<div>
+								<strong><?php echo esc_html( $name ); ?></strong>
+								<?php if ( ! empty( $prof['full_name'] ) ) : ?>
+									— <?php echo esc_html( $prof['full_name'] ); ?>, <?php echo esc_html( number_format_i18n( (int) $prof['followers'] ) ); ?> <?php esc_html_e( 'seguidores', 'ig-feed-sync' ); ?>
+								<?php endif; ?>
+								<br>
+								<?php if ( ! empty( $status['error'] ) ) : ?>
+									<span style="color:#b32d2e">✗ <?php echo esc_html( $status['error'] ); ?> (<?php echo esc_html( wp_date( $fmt, (int) $status['at'] ) ); ?>)</span>
+								<?php elseif ( ! empty( $status['at'] ) ) : ?>
+									<span style="color:#007017">✓ <?php esc_html_e( 'Perfil lido em', 'ig-feed-sync' ); ?> <?php echo esc_html( wp_date( $fmt, (int) $status['at'] ) ); ?></span>
+								<?php else : ?>
+									<span><?php esc_html_e( 'Ainda não sincronizada.', 'ig-feed-sync' ); ?></span>
+								<?php endif; ?>
+								· <?php esc_html_e( 'Publicação mais recente:', 'ig-feed-sync' ); ?> <?php echo $last ? esc_html( wp_date( $fmt, $last ) ) : '—'; ?>
+							</div>
+						</div>
 					<?php endforeach; ?>
+					<p class="description"><?php esc_html_e( 'Confirme que o nome e a foto são da conta certa: um nome mal escrito pode corresponder a outra conta do Instagram.', 'ig-feed-sync' ); ?></p>
 					(<?php echo esc_html( (int) $count->publish ); ?> <?php esc_html_e( 'publicadas no total', 'ig-feed-sync' ); ?>)
 				</td>
 			</tr>
@@ -1019,7 +1162,19 @@ function igfs_settings_page() {
 			<?php wp_nonce_field( 'igfs_regenerate_key' ); ?>
 			<?php submit_button( __( 'Gerar chave nova', 'ig-feed-sync' ), 'secondary', 'submit', false ); ?>
 		</form>
-		<p><?php esc_html_e( 'Shortcode:', 'ig-feed-sync' ); ?> <code>[igfs_feed layout="cards" num="9" featured="1"]</code> · <code>[igfs_feed layout="highlight" num="9" title="#conta" button="Ver mais no Instagram"]</code> · <?php esc_html_e( 'Opções: featured="1|tall|0" (1.ª em 2x2, em 1x2 ou normal), ratio="1|4/5|auto", width="1100" (largura máxima em px).', 'ig-feed-sync' ); ?></p>
+		<h2><?php esc_html_e( 'Shortcodes', 'ig-feed-sync' ); ?></h2>
+		<table class="form-table" role="presentation">
+			<?php foreach ( array_keys( igfs_accounts() ) as $i => $name ) : ?>
+				<tr>
+					<th scope="row"><?php echo esc_html( $name ); ?><?php echo 0 === $i ? ' (' . esc_html__( 'principal', 'ig-feed-sync' ) . ')' : ''; ?></th>
+					<td>
+						<code>[igfs_feed<?php echo 0 === $i ? '' : ' account="' . esc_html( $name ) . '"'; ?> layout="cards" num="7" featured="tall"]</code><br>
+						<code>[igfs_feed<?php echo 0 === $i ? '' : ' account="' . esc_html( $name ) . '"'; ?> layout="highlight" num="9" title="@<?php echo esc_html( $name ); ?>" button="Ver mais no Instagram"]</code>
+					</td>
+				</tr>
+			<?php endforeach; ?>
+		</table>
+		<p class="description"><?php esc_html_e( 'Opções: layout="cards|highlight", num (número de publicações), cols (colunas), featured="1|tall|0" (1.ª em 2x2, em 1x2 ou normal), ratio="1|4/5|auto", width="1100" (largura máxima em px), title, button.', 'ig-feed-sync' ); ?></p>
 	</div>
 	<?php
 }

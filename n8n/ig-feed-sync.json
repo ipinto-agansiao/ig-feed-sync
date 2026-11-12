@@ -108,7 +108,7 @@
           },
           "conditions": [
             {
-              "id": "06c45fcb-956b-4dce-892e-62e08e201315",
+              "id": "e0a059d4-3312-4873-bbe4-a69b66140ba4",
               "leftValue": "={{ $json.enabled }}",
               "rightValue": "",
               "operator": {
@@ -152,7 +152,8 @@
       "position": [
         680,
         200
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -171,7 +172,7 @@
         "options": {},
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ username: $json.username, full_name: $json.fullName || '', followers: $json.followersCount || 0, posts_count: $json.postsCount || 0, avatar_url: $json.profilePicUrlHD || $json.profilePicUrl || '' }) }}"
+        "jsonBody": "={{ JSON.stringify({ username: $('WP: estado').first().json.username, full_name: $json.fullName || '', followers: $json.followersCount || 0, posts_count: $json.postsCount || 0, avatar_url: $json.profilePicUrlHD || $json.profilePicUrl || '', error: (() => { const p = $('Apify: perfil').first().json; if (p.error) return p.restrictionReason || p.errorDescription || p.error; if (!p.id) return 'Conta não encontrada no Instagram.'; if (p.private) return 'A conta é privada.'; return ''; })() }) }}"
       },
       "id": "c9115d1f-1369-5f12-8e8b-60a41d7b2db8",
       "name": "WP: perfil",
@@ -179,6 +180,54 @@
       "typeVersion": 4.2,
       "position": [
         900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8184fe67-1c61-4da5-b402-ac4bc62a7c64",
+              "leftValue": "={{ (() => { const p = $('Apify: perfil').first().json; if (p.error) return p.restrictionReason || p.errorDescription || p.error; if (!p.id) return 'Conta não encontrada no Instagram.'; if (p.private) return 'A conta é privada.'; return ''; })() !== '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "f95292e9-c145-5a19-8c5d-96d27e3fec65",
+      "name": "Perfil com erro?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "=Instagram: {{ (() => { const p = $('Apify: perfil').first().json; if (p.error) return p.restrictionReason || p.errorDescription || p.error; if (!p.id) return 'Conta não encontrada no Instagram.'; if (p.private) return 'A conta é privada.'; return ''; })() }} (conta {{ $('WP: estado').first().json.username }}, {{ $('Cliente').first().json.site }})"
+      },
+      "id": "bbcac2de-50ef-5adf-8131-58552ebf249e",
+      "name": "Erro Instagram",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1340,
         200
       ]
     },
@@ -215,7 +264,7 @@
           },
           "conditions": [
             {
-              "id": "cf61e501-dcd4-4eb2-9ebd-910bd052224d",
+              "id": "12ff6708-b660-49c2-abcd-ca79ac971d7e",
               "leftValue": "={{ ['READY','RUNNING'].includes($json.data.status) }}",
               "rightValue": "",
               "operator": {
@@ -252,7 +301,7 @@
         1120,
         700
       ],
-      "webhookId": "8c7579e8-3991-4562-af51-786d5f10f571"
+      "webhookId": "6cf03b35-421c-40db-90de-ac86ea7ef168"
     },
     {
       "parameters": {
@@ -284,7 +333,7 @@
           },
           "conditions": [
             {
-              "id": "d000b9ed-f964-4593-9b21-ce4b7d113c0c",
+              "id": "b1822b2c-459c-4329-9b3a-a9d309b5b2f1",
               "leftValue": "={{ $json.data.status }}",
               "rightValue": "SUCCEEDED",
               "operator": {
@@ -350,7 +399,7 @@
           },
           "conditions": [
             {
-              "id": "614953ac-b29b-4089-8567-10bacc7f6b6c",
+              "id": "d731228d-009c-4409-8e4c-a4480f0ee582",
               "leftValue": "={{ $json.shortCode }}",
               "rightValue": "",
               "operator": {
@@ -443,7 +492,7 @@
           },
           "conditions": [
             {
-              "id": "5fa7e5f3-b207-4367-9382-fa846c532592",
+              "id": "963c79c7-bd5a-41df-9795-cdd56956dbf0",
               "leftValue": "={{ ($json.extra_urls || []).length }}",
               "rightValue": 0,
               "operator": {
@@ -499,7 +548,7 @@
           },
           "conditions": [
             {
-              "id": "74e8e231-ac39-42d9-baac-0559d9ea611e",
+              "id": "6ca59faa-2056-4007-9e18-1847047d11b0",
               "leftValue": "={{ $json.shortCode }}",
               "rightValue": "",
               "operator": {
@@ -631,6 +680,28 @@
         [
           {
             "node": "WP: perfil",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WP: perfil": {
+      "main": [
+        [
+          {
+            "node": "Perfil com erro?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perfil com erro?": {
+      "main": [
+        [
+          {
+            "node": "Erro Instagram",
             "type": "main",
             "index": 0
           }

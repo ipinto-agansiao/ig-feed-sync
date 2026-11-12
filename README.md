@@ -36,6 +36,17 @@ Como funciona:
 - O workflow chama-se a si próprio uma vez por cliente, um cliente de cada vez.
 - Se um cliente falhar, passa ao seguinte. O erro fica nas execuções do n8n.
 
+## Avisos de erro
+
+- **No WordPress:** se o Instagram não devolver uma conta (porque não existe, é privada ou tem restrição de idade), aparece um aviso vermelho no painel. As definições mostram, para cada conta, a foto, o nome e os seguidores que o Instagram devolveu. Assim dá para confirmar que é a conta certa: um nome mal escrito pode corresponder a outra pessoa.
+- **No n8n:** a execução dessa conta fica vermelha, com o erro do Instagram.
+- **Por email (Brevo):** importar `n8n/ig-feed-sync-avisos.json` como um workflow à parte. No nó "Enviar email (Brevo)":
+  1. escolher a credencial **Header Auth** do Brevo (Name `api-key`, Value com a chave da API);
+  2. no JSON, trocar `REMETENTE@dominio.pt` por um remetente validado no Brevo e `DESTINO@dominio.pt` pelo email que recebe os avisos;
+  3. guardar.
+
+  Depois, no workflow "IG Feed Sync", ir a **⋯ > Settings > Error workflow** e escolher "IG Feed Sync - Avisos". Não é preciso ativar o workflow de avisos.
+
 ## Juntar um cliente
 
 1. Copiar a pasta `ig-feed-sync` para `wp-content/plugins/` e ativar o plugin.
@@ -90,7 +101,10 @@ Regras:
 - `ratio`: proporção das imagens. Por defeito é `1` (quadrado); `4/5` é a proporção vertical do Instagram. Com `auto`, cada imagem mantém a proporção original.
 - `width`: largura máxima da grelha, em px. Sem este atributo, a grelha ocupa a largura toda.
 - Imagem do perfil: pode ser escolhida em Definições > IG Feed Sync. Se não for escolhida nenhuma, é usada a foto do Instagram, atualizada de 7 em 7 dias.
-- As cores podem ser alteradas no CSS do tema, através das variáveis em `.igfs`: `--igfs-accent`, `--igfs-accent-text`, `--igfs-card`, `--igfs-muted` e `--igfs-gap`.
+- **Botão "Ver no Instagram":** configura-se em Definições > IG Feed Sync. Tem texto, cor de fundo, cor do texto, estilo (cheio ou só contorno), cantos arredondados e maiúsculas.
+  - O texto definido aparece em todas as grelhas.
+  - No shortcode, `button="..."` muda o texto e `button=""` esconde o botão.
+- Para outros ajustes no CSS do tema, há estas variáveis em `.igfs`: `--igfs-card`, `--igfs-muted` e `--igfs-gap`.
 
 ## Desligar ou cortar o acesso
 

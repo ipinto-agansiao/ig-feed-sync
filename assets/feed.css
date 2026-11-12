@@ -192,9 +192,32 @@
 	text-decoration: none;
 }
 
+.igfs__button {
+	border: 2px solid var(--igfs-accent);
+	border-radius: var(--igfs-btn-radius, 0);
+	transition: opacity 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
 .igfs__button:hover,
 .igfs__button:focus-visible {
 	opacity: 0.85;
+}
+
+.igfs--btn-outline .igfs__button {
+	background: transparent;
+	color: var(--igfs-accent);
+}
+
+.igfs--btn-outline .igfs__button:hover,
+.igfs--btn-outline .igfs__button:focus-visible {
+	background: var(--igfs-accent);
+	color: var(--igfs-accent-text);
+	opacity: 1;
+}
+
+.igfs--btn-upper .igfs__button {
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
 }
 
 @media (max-width: 767px) {
