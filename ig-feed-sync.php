@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IG Feed Sync
  * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.5.0
+ * Version: 1.6.0
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.5.0' );
+define( 'IGFS_VERSION', '1.6.0' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -350,6 +350,16 @@ function igfs_register_routes() {
 					'default'           => '',
 					'sanitize_callback' => 'sanitize_text_field',
 				),
+				// Shortcodes das publicações fixadas no perfil, pela ordem do Instagram (máx. 3).
+				// Sem este parâmetro (ex.: actor intropix), a lista guardada não muda.
+				'pinned'      => array(
+					'type'     => 'array',
+					'maxItems' => 3,
+					'items'    => array(
+						'type'    => 'string',
+						'pattern' => '^[A-Za-z0-9_-]{5,40}$',
+					),
+				),
 			),
 		)
 	);
@@ -383,10 +393,15 @@ function igfs_rest_state( WP_REST_Request $request ) {
 	// continua a partir da última que ficou guardada. O intropix só aceita o dia: usa o $since.
 	$since_at = $last_post ? gmdate( 'Y-m-d\TH:i:s\Z', $last_post + 1 ) : $since;
 
-	// Publicações extra (ex.: colaborações de outra conta) ainda não guardadas. Só na conta principal.
+	// Publicações extra ainda não guardadas: as das definições (ex.: colaborações de outra conta),
+	// só na conta principal, e as fixadas no perfil mais antigas do que "Importar desde".
 	$extra = array();
-	if ( '' !== $username && array_key_first( $accounts ) === $username ) {
-		foreach ( igfs_extra_urls() as $shortcode => $url ) {
+	if ( '' !== $username ) {
+		$wanted = array_key_first( $accounts ) === $username ? igfs_extra_urls() : array();
+		foreach ( igfs_pinned( $username ) as $shortcode ) {
+			$wanted[ $shortcode ] = 'https://www.instagram.com/p/' . $shortcode . '/';
+		}
+		foreach ( $wanted as $shortcode => $url ) {
 			if ( ! igfs_find_post( $shortcode ) ) {
 				$extra[] = $url;
 			}
@@ -589,7 +604,27 @@ function igfs_rest_save_profile( WP_REST_Request $request ) {
 	}
 
 	update_option( $option, $profile, false );
+
+	// Fixadas: a lista é substituída em cada execução (as que deixam de estar fixadas saem).
+	if ( $request->has_param( 'pinned' ) ) {
+		$pinned = array_values( array_unique( array_map( 'strval', (array) $request['pinned'] ) ) );
+		if ( igfs_pinned( $account ) !== $pinned ) {
+			update_option( igfs_opt( 'igfs_pinned', $account ), $pinned, false );
+			do_action( 'litespeed_purge_all' );
+		}
+	}
+
 	return rest_ensure_response( array( 'status' => 'saved' ) );
+}
+
+/**
+ * Shortcodes das publicações fixadas no perfil de uma conta, pela ordem do Instagram.
+ *
+ * @param string $account Conta.
+ * @return string[]
+ */
+function igfs_pinned( $account ) {
+	return array_values( array_filter( (array) get_option( igfs_opt( 'igfs_pinned', $account ), array() ), 'is_string' ) );
 }
 
 /**
@@ -820,12 +855,40 @@ function igfs_feed_shortcode( $atts ) {
 		),
 	) : array( $by_account );
 
+	$num = min( max( absint( $atts['num'] ), 1 ), 50 );
+
+	// Como no perfil do Instagram: primeiro as fixadas (pela ordem do Instagram), depois por data.
+	$pinned_ids = array();
+	foreach ( igfs_pinned( $account ) as $shortcode ) {
+		$id = igfs_find_post( $shortcode );
+		if ( $id && 'publish' === get_post_status( $id ) ) {
+			$pinned_ids[] = $id;
+		}
+	}
+	$pinned_ids = array_slice( $pinned_ids, 0, $num );
+	$rest_ids   = count( $pinned_ids ) < $num ? get_posts(
+		array(
+			'post_type'        => IGFS_CPT,
+			'post_status'      => 'publish',
+			'meta_query'       => $meta_query, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+			'post__not_in'     => $pinned_ids, // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in
+			'posts_per_page'   => $num - count( $pinned_ids ),
+			'fields'           => 'ids',
+			'suppress_filters' => false,
+		)
+	) : array();
+	$ids = array_merge( $pinned_ids, array_map( 'intval', $rest_ids ) );
+	if ( ! $ids ) {
+		return '';
+	}
+
 	$query = new WP_Query(
 		array(
 			'post_type'              => IGFS_CPT,
 			'post_status'            => 'publish',
-			'meta_query'             => $meta_query, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
-			'posts_per_page'         => min( max( absint( $atts['num'] ), 1 ), 50 ),
+			'post__in'               => $ids,
+			'orderby'                => 'post__in',
+			'posts_per_page'         => count( $ids ),
 			'no_found_rows'          => true,
 			'update_post_term_cache' => false,
 		)
@@ -1099,6 +1162,7 @@ function igfs_username_changed() {
 	delete_option( 'igfs_profile' );
 	delete_option( 'igfs_last_post_at' );
 	delete_option( 'igfs_status' );
+	delete_option( 'igfs_pinned' );
 }
 add_action( 'update_option_igfs_username', 'igfs_username_changed' );
 

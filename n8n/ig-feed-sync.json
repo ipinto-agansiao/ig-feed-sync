@@ -208,7 +208,7 @@
         "options": {},
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ username: $('WP: estado').first().json.username, full_name: $json.fullName || '', followers: $json.followersCount || 0, posts_count: $json.postsCount || 0, avatar_url: $json.profilePicUrlHD || $json.profilePicUrl || '', error: (() => { const p = $('Apify: perfil').first().json; if (p.error) return p.restrictionReason || p.errorDescription || p.error; if (!p.id) return 'Conta não encontrada no Instagram.'; if (p.private) return 'A conta é privada.'; return ''; })() }) }}"
+        "jsonBody": "={{ JSON.stringify({ username: $('WP: estado').first().json.username, full_name: $json.fullName || '', followers: $json.followersCount || 0, posts_count: $json.postsCount || 0, avatar_url: $json.profilePicUrlHD || $json.profilePicUrl || '', pinned: ($json.latestPosts || []).filter(p => p.isPinned && p.shortCode).map(p => p.shortCode).slice(0, 3), error: (() => { const p = $('Apify: perfil').first().json; if (p.error) return p.restrictionReason || p.errorDescription || p.error; if (!p.id) return 'Conta não encontrada no Instagram.'; if (p.private) return 'A conta é privada.'; return ''; })() }) }}"
       },
       "id": "c9115d1f-1369-5f12-8e8b-60a41d7b2db8",
       "name": "WP: perfil",
@@ -715,7 +715,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ shortcode: $json.shortCode, url: 'https://www.instagram.com/p/' + $json.shortCode + '/', caption: $json.caption || '', type: $json.type, timestamp: $json.timestamp, image_url: $json.displayUrl, extra: true }) }}"
+        "jsonBody": "={{ JSON.stringify({ shortcode: $json.shortCode, url: 'https://www.instagram.com/p/' + $json.shortCode + '/', caption: $json.caption || '', type: $json.type, timestamp: $json.timestamp, image_url: $json.displayUrl, extra: true, account: $('Cliente').first().json.account || '' }) }}"
       },
       "id": "6b44c89d-c9eb-5d4e-91cc-8d008b86404a",
       "name": "WP: guardar extra",
