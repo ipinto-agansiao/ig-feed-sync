@@ -60,7 +60,11 @@ Como funciona:
 5. Executar o workflow uma vez à mão (**Execute workflow**) para a primeira importação.
 6. Pôr o shortcode no tema ou numa página.
 
-Cada site guarda a data da última publicação recebida. Os pedidos seguintes só trazem o que é novo. Para ir buscar publicações mais antigas, muda a data de "Importar desde" e guarda. A execução seguinte volta a pedir a partir dessa data e as publicações que já existem não são duplicadas.
+Cada site guarda a data da última publicação recebida. Os pedidos seguintes só trazem o que é novo: o actor normal recebe a data e hora exatas (`since_at`, 1 s depois da última publicação), por isso não volta a cobrar publicações já importadas. O actor intropix só aceita o dia (`since`) e repete as publicações desse dia até haver uma mais recente.
+
+As publicações fixadas no perfil não são ignoradas (a opção `skipPinnedPosts` do Apify não está ligada): se uma publicação nova for fixada antes de o n8n correr, deixaria de ser importada.
+
+Os nós "WP: guardar publicação" e "WP: guardar extra" repetem o pedido até 3 vezes, com 5 s de intervalo, e esperam 2 s entre publicações. Isto evita os `503` de alojamentos partilhados, porque cada publicação descarrega e converte imagens. Para ir buscar publicações mais antigas, muda a data de "Importar desde" e guarda. A execução seguinte volta a pedir a partir dessa data e as publicações que já existem não são duplicadas.
 
 ## Lightbox e imagens
 

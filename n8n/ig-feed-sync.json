@@ -278,7 +278,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($('Cliente').first().json.actor === 'intropix' ? { usernames: [$json.username], sinceDate: $json.since, maxPostsPerAccount: 1000, includeViews: false } : { username: [$json.username], onlyPostsNewerThan: $json.since, resultsLimit: 1000 }) }}"
+        "jsonBody": "={{ JSON.stringify($('Cliente').first().json.actor === 'intropix' ? { usernames: [$json.username], sinceDate: $json.since, maxPostsPerAccount: 1000, includeViews: false } : { username: [$json.username], onlyPostsNewerThan: $json.since_at || $json.since, resultsLimit: 1000 }) }}"
       },
       "id": "1143850d-83e5-5792-b5e0-948cbf865a23",
       "name": "Apify: iniciar posts",
@@ -579,7 +579,7 @@
           "batching": {
             "batch": {
               "batchSize": 1,
-              "batchInterval": 500
+              "batchInterval": 2000
             }
           }
         },
@@ -594,7 +594,10 @@
       "position": [
         2220,
         320
-      ]
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -706,7 +709,7 @@
           "batching": {
             "batch": {
               "batchSize": 1,
-              "batchInterval": 500
+              "batchInterval": 2000
             }
           }
         },
@@ -721,7 +724,10 @@
       "position": [
         1340,
         900
-      ]
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     }
   ],
   "connections": {

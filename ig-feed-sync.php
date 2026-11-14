@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IG Feed Sync
  * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.4.7
+ * Version: 1.5.0
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.4.7' );
+define( 'IGFS_VERSION', '1.5.0' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -377,6 +377,11 @@ function igfs_rest_state( WP_REST_Request $request ) {
 	// Pede desde o dia da última publicação guardada (não da hora do pedido): se uma
 	// execução falhar a meio, nada fica por importar. Os repetidos são ignorados.
 	$since = $last_post ? gmdate( 'Y-m-d', $last_post ) : (string) ( $accounts[ $username ] ?? '' );
+	// Data e hora exatas (ISO, UTC), 1 s depois da última publicação guardada: o actor normal do
+	// Apify aceita-as e deixa de cobrar as publicações desse dia em cada execução. O n8n guarda as
+	// publicações das mais antigas para as mais recentes, por isso uma execução que falhe a meio
+	// continua a partir da última que ficou guardada. O intropix só aceita o dia: usa o $since.
+	$since_at = $last_post ? gmdate( 'Y-m-d\TH:i:s\Z', $last_post + 1 ) : $since;
 
 	// Publicações extra (ex.: colaborações de outra conta) ainda não guardadas. Só na conta principal.
 	$extra = array();
@@ -393,6 +398,7 @@ function igfs_rest_state( WP_REST_Request $request ) {
 			'enabled'      => (bool) get_option( 'igfs_enabled' ) && '' !== $username && '' !== $since,
 			'username'     => $username,
 			'since'        => $since,
+			'since_at'     => $since_at,
 			'extra_urls'   => $extra,
 			'last_post_at' => $last_post ? gmdate( 'c', $last_post ) : null,
 			'last_sync_at' => gmdate( 'c', $now ),
