@@ -71,6 +71,10 @@ Cada site guarda a data da última publicação recebida. Os pedidos seguintes s
 
 Os nós "WP: guardar publicação" e "WP: guardar extra" repetem o pedido até 3 vezes, com 5 s de intervalo, e esperam 2 s entre publicações. Isto evita os `503` de alojamentos partilhados, porque cada publicação descarrega e converte imagens. Para ir buscar publicações mais antigas, muda a data de "Importar desde" e guarda. A execução seguinte volta a pedir a partir dessa data e as publicações que já existem não são duplicadas.
 
+## Cabeçalho
+
+Por cima da grelha aparece a foto e o nome da conta. Para o esconder, desligar Definições > IG Feed Sync > Cabeçalho (ligado por defeito). No shortcode, `header="1"` ou `header="0"` muda só essa grelha.
+
 ## Lightbox e imagens
 
 - **Lightbox:** ao clicar numa publicação, abre uma janela no próprio site, com a imagem ou o carrossel completo, a legenda, a data e o botão "Ver no Instagram".

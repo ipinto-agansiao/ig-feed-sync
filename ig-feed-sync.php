@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IG Feed Sync
  * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.6.0
+ * Version: 1.7.0
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.6.0' );
+define( 'IGFS_VERSION', '1.7.0' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -821,6 +821,7 @@ function igfs_feed_shortcode( $atts ) {
 			'width'    => '',
 			'account'  => '',
 			'lightbox' => null, // null = definição do plugin; lightbox="1" ou "0" sobrepõe.
+			'header'   => null, // null = definição do plugin; header="1" ou "0" sobrepõe.
 		),
 		$atts,
 		'igfs_feed'
@@ -903,6 +904,8 @@ function igfs_feed_shortcode( $atts ) {
 		wp_enqueue_script( 'igfs-lightbox' );
 	}
 	$items = array(); // Dados de cada publicação para a lightbox.
+	// Cabeçalho (foto e nome da conta).
+	$header = null === $atts['header'] ? (bool) get_option( 'igfs_header', 1 ) : '0' !== (string) $atts['header'];
 
 	$profile  = (array) get_option( igfs_opt( 'igfs_profile', $account ), array() );
 	$username = ! empty( $profile['username'] ) ? $profile['username'] : $account;
@@ -932,6 +935,7 @@ function igfs_feed_shortcode( $atts ) {
 	ob_start();
 	?>
 	<div class="igfs igfs--<?php echo esc_attr( $layout ); ?><?php echo $featured ? ' igfs--featured' : ''; ?><?php echo $tall ? ' igfs--featured-tall' : ''; ?><?php echo esc_attr( $btn_class ); ?>" style="--igfs-cols:<?php echo esc_attr( $cols ); ?>;--igfs-ratio:<?php echo esc_attr( $ratio ); ?>;--igfs-rest:<?php echo esc_attr( max( $cols - 1, 1 ) ); ?><?php echo absint( $atts['width'] ) ? ';--igfs-max-width:' . absint( $atts['width'] ) . 'px' : ''; ?><?php echo esc_attr( $btn_vars ); ?>">
+		<?php if ( $header ) : ?>
 		<a class="igfs__header" href="<?php echo esc_url( $prof_url ); ?>" target="_blank" rel="noopener">
 			<?php if ( $avatar ) : ?>
 				<?php echo wp_get_attachment_image( $avatar, 'thumbnail', false, array( 'class' => 'igfs__avatar', 'alt' => '', 'loading' => 'lazy' ) ); ?>
@@ -950,6 +954,7 @@ function igfs_feed_shortcode( $atts ) {
 				<span class="igfs__name" data-no-translation><?php echo esc_html( $title ); ?></span>
 			<?php endif; ?>
 		</a>
+		<?php endif; ?>
 		<ul class="igfs__grid" data-no-translation>
 			<?php
 			while ( $query->have_posts() ) :
@@ -1081,6 +1086,15 @@ function igfs_register_settings() {
 	register_setting(
 		'igfs',
 		'igfs_lb_link_photos',
+		array(
+			'sanitize_callback' => function ( $value ) {
+				return $value ? 1 : 0;
+			},
+		)
+	);
+	register_setting(
+		'igfs',
+		'igfs_header',
 		array(
 			'sanitize_callback' => function ( $value ) {
 				return $value ? 1 : 0;
@@ -1309,6 +1323,11 @@ function igfs_settings_page() {
 					<th scope="row"><label for="igfs_extra_urls"><?php esc_html_e( 'Publicações extra', 'ig-feed-sync' ); ?></label></th>
 					<td><textarea name="igfs_extra_urls" id="igfs_extra_urls" rows="4" class="large-text code" placeholder="https://www.instagram.com/p/..."><?php echo esc_textarea( get_option( 'igfs_extra_urls', '' ) ); ?></textarea>
 					<p class="description"><?php esc_html_e( 'Um link por linha. Para colaborações que pertencem a outra conta e por isso não vêm no pedido normal. São importadas na próxima execução do n8n.', 'ig-feed-sync' ); ?></p></td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Cabeçalho', 'ig-feed-sync' ); ?></th>
+					<td><label><input name="igfs_header" type="checkbox" value="1" <?php checked( get_option( 'igfs_header', 1 ) ); ?>> <?php esc_html_e( 'Mostrar a foto e o nome da conta por cima da grelha', 'ig-feed-sync' ); ?></label>
+					<p class="description"><?php esc_html_e( 'No shortcode, header="1" ou header="0" muda só essa grelha.', 'ig-feed-sync' ); ?></p></td>
 				</tr>
 				<tr>
 					<th scope="row"><?php esc_html_e( 'Imagem do perfil', 'ig-feed-sync' ); ?></th>
