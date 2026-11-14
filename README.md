@@ -26,7 +26,7 @@ Instalação, feita uma única vez:
    - Name: `Authorization`;
    - Value: `Bearer <token do Apify>`.
 
-   Atribuir esta credencial aos 4 nós `Apify: …`.
+   Atribuir esta credencial aos 5 nós `Apify: …` (perfil, iniciar posts, ver estado, resultados e extras).
 3. No nó **Sincronizar cada cliente**, escolher este mesmo workflow na lista "Workflow".
 4. Ativar o workflow. Por defeito corre de 12 em 12 horas.
 
