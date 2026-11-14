@@ -728,6 +728,128 @@
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "74de6787-1be4-57ec-adf7-4fc39290be85",
+              "leftValue": "={{ $json.error === 'restricted_page' && !!$json.url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "9afdb9f0-67de-5094-843e-8067611aa51d",
+      "name": "Extras com restrição",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        1100
+      ],
+      "notes": "Publicações que o Apify normal recusa por restrição de idade (restricted_page)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Junta os links das publicações com restrição num só pedido ao intropix.\nconst urls = [...new Set($input.all().map(i => i.json.url).filter(Boolean))];\nreturn urls.length ? [{ json: { urls } }] : [];"
+      },
+      "id": "018b7523-63a4-52d5-abda-6ae7028d0b29",
+      "name": "Juntar links",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        1100
+      ],
+      "notes": "Um só pedido ao intropix com todos os links."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/intropix~instagram-posts-reels-scraper/run-sync-get-dataset-items",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 300000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ postUrls: $json.urls, includeViews: false }) }}"
+      },
+      "id": "190d03f0-77e4-58d7-afce-cd4a5bec4645",
+      "name": "Apify: extras (intropix)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        1100
+      ],
+      "notes": "O intropix lê publicações com restrição de idade. Só corre para as que o Apify normal recusou."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Converte o resultado do actor intropix para o formato do Apify normal. O do Apify passa sem mudanças.\nconst out = [];\nfor (const { json: p } of $input.all()) {\n  if (p.shortCode || !p.shortcode) { out.push({ json: p }); continue; }\n  const media = (p.media || []).map(m => m.media_type === 'video' ? m.cover_url : m.media_url).filter(Boolean);\n  const type = p.post_type === 'carousel' ? 'Sidecar' : (p.post_type === 'image' ? 'Image' : 'Video');\n  out.push({ json: { shortCode: p.shortcode, url: p.permalink, caption: p.caption || '', type, timestamp: p.taken_at, displayUrl: media[0] || '', images: type === 'Sidecar' ? media : [] } });\n}\nreturn out;"
+      },
+      "id": "ff4ee6fb-c99f-597b-bd7e-2a96debe8227",
+      "name": "Normalizar extras",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        1100
+      ],
+      "notes": "Põe os resultados dos dois actores no mesmo formato."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4ea37ecb-ebc0-4bb8-839b-e9db4450a4a9",
+              "leftValue": "={{ $json.shortCode && $json.displayUrl }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "5c5b2635-b3fc-5e5c-811d-1f2d25da410a",
+      "name": "Só extras (intropix)",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        2000,
+        1100
+      ]
     }
   ],
   "connections": {
@@ -987,11 +1109,71 @@
             "node": "Só extras",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Extras com restrição",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
     },
     "Só extras": {
+      "main": [
+        [
+          {
+            "node": "WP: guardar extra",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extras com restrição": {
+      "main": [
+        [
+          {
+            "node": "Juntar links",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar links": {
+      "main": [
+        [
+          {
+            "node": "Apify: extras (intropix)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify: extras (intropix)": {
+      "main": [
+        [
+          {
+            "node": "Normalizar extras",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar extras": {
+      "main": [
+        [
+          {
+            "node": "Só extras (intropix)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Só extras (intropix)": {
       "main": [
         [
           {

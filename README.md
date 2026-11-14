@@ -26,7 +26,7 @@ Instalação, feita uma única vez:
    - Name: `Authorization`;
    - Value: `Bearer <token do Apify>`.
 
-   Atribuir esta credencial aos 5 nós `Apify: …` (perfil, iniciar posts, ver estado, resultados e extras).
+   Atribuir esta credencial aos 6 nós `Apify: …` (perfil, iniciar posts, ver estado, resultados, extras e extras (intropix)).
 3. No nó **Sincronizar cada cliente**, escolher este mesmo workflow na lista "Workflow".
 4. Ativar o workflow. Por defeito corre de 12 em 12 horas.
 
@@ -116,7 +116,8 @@ O actor normal do Apify não lê contas com restrição de idade. Para essas con
 ## Colaborações e publicações com restrição de idade
 
 - **Colaborações sem restrição:** colar o link em **Publicações extra**, nas definições do plugin. O n8n importa-a na execução seguinte.
-- **Publicações com restrição de idade:** o Apify não as consegue ler. Adicioná-las à mão em **Instagram > Adicionar**:
+- **Publicações extra com restrição de idade** (incluindo as fixadas mais antigas do que "Importar desde"): o Apify normal responde `restricted_page`. O workflow junta essas e pede-as uma vez ao actor intropix (`postUrls`), que as consegue ler. Depois de guardadas, deixam de ser pedidas.
+- **Publicações com restrição de idade que não vêm como extra:** se o intropix também falhar, adicioná-las à mão em **Instagram > Adicionar**:
   1. Pôr um título.
   2. Escolher a imagem de destaque.
   3. Na caixa "Instagram", colar o link e escolher o tipo.
