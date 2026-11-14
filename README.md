@@ -125,6 +125,13 @@ O actor normal do Apify não lê contas com restrição de idade. Para essas con
 
   A publicação fica com o shortcode do Instagram. Por isso o n8n não a duplica e deixa de a pedir em "Publicações extra".
 
+## Apagar publicações e recomeçar
+
+- **Apagar algumas:** em Instagram, selecionar as publicações e escolher a ação em massa "Apagar com imagens". A publicação e as imagens dela (capa e carrossel) são apagadas. Volta na próxima importação se estiver dentro das datas ou em Publicações extra.
+- **Esconder para sempre:** "Mover para o lixo". As publicações no lixo não voltam a ser importadas.
+- Apagar definitivamente (pelo lixo ou pela ação em massa) apaga sempre as imagens carregadas para a publicação. As imagens da biblioteca ligadas a outros conteúdos não são tocadas.
+- **Apagar tudo e recomeçar** (Definições > IG Feed Sync): apaga todas as publicações, incluindo as do lixo, as imagens, as fotos de perfil e o estado de cada conta (data da última publicação, fixadas). As definições e a chave ficam. A próxima execução do n8n importa tudo desde a data inicial de cada conta.
+
 ## Shortcode
 
 ```

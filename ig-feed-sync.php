@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IG Feed Sync
  * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.7.0
+ * Version: 1.8.0
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.7.0' );
+define( 'IGFS_VERSION', '1.8.0' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -129,6 +129,177 @@ function igfs_meta_save( $post_id ) {
 	}
 }
 add_action( 'save_post_' . IGFS_CPT, 'igfs_meta_save' );
+
+/* -------------------------------------------------------------------------
+ * Apagar publicações e reset
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Ao apagar definitivamente uma publicação, apaga também as imagens que foram
+ * carregadas para ela (capa e carrossel). Imagens da biblioteca ligadas a outros
+ * conteúdos não são tocadas.
+ *
+ * @param int     $post_id Publicação.
+ * @param WP_Post $post    Publicação.
+ */
+function igfs_delete_post_images( $post_id, $post ) {
+	if ( IGFS_CPT !== $post->post_type ) {
+		return;
+	}
+	$ids = get_children(
+		array(
+			'post_parent' => $post_id,
+			'post_type'   => 'attachment',
+			'post_status' => 'any',
+			'fields'      => 'ids',
+		)
+	);
+	foreach ( $ids as $id ) {
+		wp_delete_attachment( (int) $id, true );
+	}
+}
+add_action( 'before_delete_post', 'igfs_delete_post_images', 10, 2 );
+
+/**
+ * Limpa a cache da página depois de apagar publicações do feed.
+ *
+ * @param int     $post_id Publicação.
+ * @param WP_Post $post    Publicação.
+ */
+function igfs_deleted_post( $post_id, $post ) {
+	if ( IGFS_CPT === $post->post_type ) {
+		do_action( 'litespeed_purge_all' );
+	}
+}
+add_action( 'after_delete_post', 'igfs_deleted_post', 10, 2 );
+add_action( 'trashed_post', 'igfs_trashed_post' );
+
+/**
+ * Mover para o lixo também tira a publicação da grelha: limpa a cache.
+ *
+ * @param int $post_id Publicação.
+ */
+function igfs_trashed_post( $post_id ) {
+	if ( IGFS_CPT === get_post_type( $post_id ) ) {
+		do_action( 'litespeed_purge_all' );
+	}
+}
+
+/**
+ * Ação em massa "Apagar com imagens" na lista de publicações (sem passar pelo lixo).
+ *
+ * @param array $actions Ações.
+ * @return array
+ */
+function igfs_bulk_actions( $actions ) {
+	$actions['igfs_delete'] = __( 'Apagar com imagens (pode voltar a ser importada)', 'ig-feed-sync' );
+	return $actions;
+}
+add_filter( 'bulk_actions-edit-' . IGFS_CPT, 'igfs_bulk_actions' );
+
+/**
+ * Executa a ação em massa "Apagar com imagens".
+ *
+ * @param string $redirect URL de regresso.
+ * @param string $action   Ação.
+ * @param int[]  $ids      Publicações selecionadas.
+ * @return string
+ */
+function igfs_handle_bulk_delete( $redirect, $action, $ids ) {
+	if ( 'igfs_delete' !== $action ) {
+		return $redirect;
+	}
+	$done = 0;
+	foreach ( array_map( 'intval', $ids ) as $id ) {
+		if ( IGFS_CPT === get_post_type( $id ) && current_user_can( 'delete_post', $id ) && wp_delete_post( $id, true ) ) {
+			++$done;
+		}
+	}
+	return add_query_arg( 'igfs_deleted', $done, $redirect );
+}
+add_filter( 'handle_bulk_actions-edit-' . IGFS_CPT, 'igfs_handle_bulk_delete', 10, 3 );
+
+/**
+ * Apaga todas as publicações (incluindo as do lixo) e as respetivas imagens, as fotos
+ * de perfil e o estado de sincronização de todas as contas. As definições e a chave ficam.
+ * A próxima execução do n8n volta a importar tudo desde a data inicial de cada conta.
+ *
+ * @return int Número de publicações apagadas.
+ */
+function igfs_reset() {
+	// shortcut: apaga tudo num só pedido; com milhares de publicações pode exceder o tempo do PHP (voltar a carregar o botão continua).
+	if ( function_exists( 'set_time_limit' ) ) {
+		set_time_limit( 300 ); // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged
+	}
+	$ids = get_posts(
+		array(
+			'post_type'        => IGFS_CPT,
+			'post_status'      => 'any',
+			'fields'           => 'ids',
+			'numberposts'      => -1,
+			'suppress_filters' => true,
+		)
+	);
+	$ids = array_merge(
+		$ids,
+		get_posts(
+			array(
+				'post_type'        => IGFS_CPT,
+				'post_status'      => array( 'trash', 'auto-draft' ),
+				'fields'           => 'ids',
+				'numberposts'      => -1,
+				'suppress_filters' => true,
+			)
+		)
+	);
+	foreach ( $ids as $id ) {
+		wp_delete_post( (int) $id, true );
+	}
+
+	foreach ( array_keys( igfs_accounts() ) as $name ) {
+		$profile = (array) get_option( igfs_opt( 'igfs_profile', $name ), array() );
+		if ( ! empty( $profile['avatar_id'] ) ) {
+			wp_delete_attachment( (int) $profile['avatar_id'], true );
+		}
+		foreach ( array( 'igfs_profile', 'igfs_last_post_at', 'igfs_status', 'igfs_pinned' ) as $option ) {
+			delete_option( igfs_opt( $option, $name ) );
+		}
+	}
+
+	do_action( 'litespeed_purge_all' );
+	return count( $ids );
+}
+
+/**
+ * Botão "Apagar tudo e recomeçar" das definições.
+ */
+function igfs_reset_action() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( esc_html__( 'Sem permissão.', 'ig-feed-sync' ) );
+	}
+	check_admin_referer( 'igfs_reset' );
+	$count = igfs_reset();
+	wp_safe_redirect( admin_url( 'options-general.php?page=igfs&reset=' . $count ) );
+	exit;
+}
+add_action( 'admin_post_igfs_reset', 'igfs_reset_action' );
+
+/**
+ * Avisos depois de apagar ou do reset.
+ */
+function igfs_delete_notices() {
+	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- só mostra um número.
+	if ( isset( $_GET['igfs_deleted'] ) ) {
+		$msg = sprintf( /* translators: %d: número de publicações */ __( '%d publicações apagadas, com as imagens.', 'ig-feed-sync' ), absint( $_GET['igfs_deleted'] ) );
+	} elseif ( isset( $_GET['reset'] ) && 'igfs' === ( $_GET['page'] ?? '' ) ) {
+		$msg = sprintf( /* translators: %d: número de publicações */ __( 'Reset feito: %d publicações e as imagens foram apagadas. Corra o workflow do n8n para voltar a importar tudo.', 'ig-feed-sync' ), absint( $_GET['reset'] ) );
+	}
+	// phpcs:enable
+	if ( ! empty( $msg ) && current_user_can( 'edit_posts' ) ) {
+		printf( '<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html( $msg ) );
+	}
+}
+add_action( 'admin_notices', 'igfs_delete_notices' );
 
 /* -------------------------------------------------------------------------
  * Contas: a principal (Conta do Instagram) e as "Outras contas".
@@ -1446,6 +1617,14 @@ function igfs_settings_page() {
 			<input type="hidden" name="action" value="igfs_regenerate_key">
 			<?php wp_nonce_field( 'igfs_regenerate_key' ); ?>
 			<?php submit_button( __( 'Gerar chave nova', 'ig-feed-sync' ), 'secondary', 'submit', false ); ?>
+		</form>
+		<h2><?php esc_html_e( 'Apagar tudo e recomeçar', 'ig-feed-sync' ); ?></h2>
+		<p><?php esc_html_e( 'Apaga todas as publicações (incluindo as do lixo), as imagens e as fotos de perfil, e esquece a data da última publicação de cada conta. As definições e a chave ficam. A próxima execução do n8n volta a importar tudo desde a data inicial de cada conta.', 'ig-feed-sync' ); ?></p>
+		<p><?php esc_html_e( 'Para apagar só algumas publicações, use a lista em Instagram: selecione-as e escolha "Apagar com imagens". Apagadas assim, voltam na próxima importação se estiverem dentro das datas ou em Publicações extra. Movidas para o lixo, não voltam.', 'ig-feed-sync' ); ?></p>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" onsubmit="return confirm('<?php echo esc_js( __( 'Apagar todas as publicações e imagens do Instagram deste site? Não é possível desfazer.', 'ig-feed-sync' ) ); ?>');">
+			<input type="hidden" name="action" value="igfs_reset">
+			<?php wp_nonce_field( 'igfs_reset' ); ?>
+			<?php submit_button( __( 'Apagar tudo e recomeçar', 'ig-feed-sync' ), 'delete', 'submit', false ); ?>
 		</form>
 		<h2><?php esc_html_e( 'Shortcodes', 'ig-feed-sync' ); ?></h2>
 		<table class="form-table" role="presentation">
