@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IG Feed Sync
  * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.9.1
+ * Version: 1.10.2
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.9.1' );
+define( 'IGFS_VERSION', '1.10.2' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -1645,7 +1645,8 @@ function igfs_settings_page() {
 				</tr>
 			<?php endforeach; ?>
 		</table>
-		<p class="description"><?php esc_html_e( 'Opções: layout="cards|highlight", num (número de publicações), cols (colunas), featured="1|tall|0" (1.ª em 2x2, em 1x2 ou normal), ratio="1|4/5|auto", width="1100" (largura máxima em px), title, button.', 'ig-feed-sync' ); ?></p>
+		<p class="description"><?php esc_html_e( 'Opções: layout="cards|highlight", num (número de publicações), cols (colunas), featured="1|tall|0" (1.ª em 2x2, em 1x2 ou normal), ratio="1|4/5|auto", width="1100" (largura máxima em px), title, button (button="" esconde o botão), account (outra conta), header="1|0" (cabeçalho), lightbox="1|0".', 'ig-feed-sync' ); ?></p>
+		<p class="description"><?php esc_html_e( 'Cores em hexadecimal: bg="#f5f1ec" (fundo dos cartões no layout cards), btn_bg="#111111" (fundo do botão), btn_color="#ffffff" (texto do botão). Sem bg, o fundo é branco; sem btn_bg e btn_color, usam-se as cores das definições.', 'ig-feed-sync' ); ?></p>
 	</div>
 	<?php
 }
