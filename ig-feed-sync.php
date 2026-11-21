@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IG Feed Sync
  * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.9.0
+ * Version: 1.9.1
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.9.0' );
+define( 'IGFS_VERSION', '1.9.1' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -990,7 +990,9 @@ function igfs_feed_shortcode( $atts ) {
 			'featured' => '',
 			'ratio'    => '',
 			'width'    => '',
-			'bg'       => '', // Cor de fundo dos cartões (hex), ex.: bg="#f5f1ec".
+			'bg'        => '', // Cor de fundo dos cartões (hex), ex.: bg="#f5f1ec".
+			'btn_bg'    => '', // Cor de fundo do botão (hex); vazio = definições.
+			'btn_color' => '', // Cor do texto do botão (hex); vazio = definições.
 			'account'  => '',
 			'lightbox' => null, // null = definição do plugin; lightbox="1" ou "0" sobrepõe.
 			'header'   => null, // null = definição do plugin; header="1" ou "0" sobrepõe.
@@ -1096,8 +1098,10 @@ function igfs_feed_shortcode( $atts ) {
 	$btn_text  = null === $atts['button'] ? (string) get_option( 'igfs_btn_text', '' ) : (string) $atts['button'];
 	$btn_vars  = '';
 	$btn_class = '';
+	// Os atributos btn_bg e btn_color do shortcode sobrepõem as cores das definições.
 	foreach ( array( 'igfs_btn_bg' => '--igfs-accent', 'igfs_btn_color' => '--igfs-accent-text' ) as $opt => $var ) {
-		$color = sanitize_hex_color( (string) get_option( $opt, '' ) );
+		$attr  = substr( $opt, 5 ); // igfs_btn_bg -> btn_bg.
+		$color = sanitize_hex_color( (string) $atts[ $attr ] ) ?: sanitize_hex_color( (string) get_option( $opt, '' ) ); // phpcs:ignore Universal.Operators.DisallowShortTernary.Found
 		$btn_vars .= $color ? ';' . $var . ':' . $color : '';
 	}
 	$bg         = sanitize_hex_color( (string) $atts['bg'] );
@@ -1546,8 +1550,8 @@ function igfs_settings_page() {
 				<tr>
 					<th scope="row"><?php esc_html_e( 'Cores', 'ig-feed-sync' ); ?></th>
 					<td>
-						<label><?php esc_html_e( 'Fundo', 'ig-feed-sync' ); ?><br><input name="igfs_btn_bg" type="text" class="igfs-color" value="<?php echo esc_attr( get_option( 'igfs_btn_bg', '#111111' ) ); ?>" data-default-color="#111111"></label><br>
-						<label><?php esc_html_e( 'Texto', 'ig-feed-sync' ); ?><br><input name="igfs_btn_color" type="text" class="igfs-color" value="<?php echo esc_attr( get_option( 'igfs_btn_color', '#ffffff' ) ); ?>" data-default-color="#ffffff"></label>
+						<label for="igfs_btn_bg"><?php esc_html_e( 'Fundo', 'ig-feed-sync' ); ?></label><br><input id="igfs_btn_bg" name="igfs_btn_bg" type="text" class="igfs-color" value="<?php echo esc_attr( get_option( 'igfs_btn_bg', '#111111' ) ); ?>" data-default-color="#111111"><br>
+						<label for="igfs_btn_color"><?php esc_html_e( 'Texto', 'ig-feed-sync' ); ?></label><br><input id="igfs_btn_color" name="igfs_btn_color" type="text" class="igfs-color" value="<?php echo esc_attr( get_option( 'igfs_btn_color', '#ffffff' ) ); ?>" data-default-color="#ffffff">
 						<p class="description"><?php esc_html_e( 'A cor de fundo também é usada no ícone do cabeçalho do layout highlight.', 'ig-feed-sync' ); ?></p>
 					</td>
 				</tr>

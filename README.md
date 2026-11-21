@@ -142,7 +142,7 @@ O actor normal do Apify não lê contas com restrição de idade. Para essas con
 Todos os atributos (os valores são exemplos):
 
 ```
-[igfs_feed account="outraconta" layout="cards" num="7" cols="4" featured="tall" ratio="4/5" width="1200" bg="#f5f1ec" title="@outraconta" button="Ver no Instagram" header="1" lightbox="1"]
+[igfs_feed account="outraconta" layout="cards" num="7" cols="4" featured="tall" ratio="4/5" width="1200" bg="#f5f1ec" btn_bg="#0a1a6e" btn_color="#ffffff" title="@outraconta" button="Ver no Instagram" header="1" lightbox="1"]
 ```
 
 - `cards`: cabeçalho com foto, publicações e seguidores, e um cabeçalho pequeno em cada cartão.
@@ -154,7 +154,8 @@ Todos os atributos (os valores são exemplos):
 - `bg`: cor de fundo dos cartões no layout `cards`, em hexadecimal (ex.: `bg="#f5f1ec"`). Sem este atributo, o fundo é branco. Um valor que não seja uma cor hex é ignorado.
 - Imagem do perfil: pode ser escolhida em Definições > IG Feed Sync. Se não for escolhida nenhuma, é usada a foto do Instagram, atualizada de 7 em 7 dias.
 - **Botão "Ver no Instagram":** configura-se em Definições > IG Feed Sync. Tem texto, cor de fundo, cor do texto, estilo (cheio ou só contorno), cantos arredondados e maiúsculas.
-  - O texto definido aparece em todas as grelhas.
+  - O texto e as cores definidos aparecem em todas as grelhas.
+  - No shortcode, `btn_bg="#..."` muda a cor de fundo do botão e `btn_color="#..."` a cor do texto, só nessa grelha. Um valor que não seja uma cor hex é ignorado e fica a cor das definições.
   - No shortcode, `button="..."` muda o texto e `button=""` esconde o botão.
 - Para outros ajustes no CSS do tema, há estas variáveis em `.igfs`: `--igfs-card`, `--igfs-muted` e `--igfs-gap`.
 
