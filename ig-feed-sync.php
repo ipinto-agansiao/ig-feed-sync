@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IG Feed Sync
  * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.11.0
+ * Version: 1.12.0
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.11.0' );
+define( 'IGFS_VERSION', '1.12.0' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -64,6 +64,37 @@ function igfs_account_meta_query( $account ) {
 }
 
 /**
+ * Contas de uma publicação. Sem conta gravada, é da principal.
+ *
+ * @param int $post_id Publicação.
+ * @return string[]
+ */
+function igfs_post_accounts( $post_id ) {
+	$accounts = array_values( array_unique( array_filter( (array) get_post_meta( $post_id, '_igfs_account' ), 'is_string' ) ) );
+	return $accounts ? $accounts : array_filter( array( (string) array_key_first( igfs_accounts() ) ) );
+}
+
+/**
+ * Junta uma conta às da publicação, sem tirar as que já tem.
+ *
+ * @param int    $post_id Publicação.
+ * @param string $account Conta.
+ */
+function igfs_add_account( $post_id, $account ) {
+	$current = igfs_post_accounts( $post_id );
+	if ( in_array( $account, $current, true ) ) {
+		return;
+	}
+	if ( ! get_post_meta( $post_id, '_igfs_account' ) ) {
+		// Publicação antiga sem conta: grava a principal antes, para não sair da grelha dela.
+		foreach ( $current as $name ) {
+			add_post_meta( $post_id, '_igfs_account', $name );
+		}
+	}
+	add_post_meta( $post_id, '_igfs_account', $account );
+}
+
+/**
  * Número de publicações publicadas de uma conta.
  *
  * @param string $account Conta.
@@ -106,8 +137,7 @@ function igfs_list_column( $column, $post_id ) {
 	if ( 'igfs_account' !== $column ) {
 		return;
 	}
-	$account = (string) get_post_meta( $post_id, '_igfs_account', true );
-	echo esc_html( '' !== $account ? $account : (string) array_key_first( igfs_accounts() ) );
+	echo esc_html( implode( ', ', igfs_post_accounts( $post_id ) ) );
 }
 add_action( 'manage_' . IGFS_CPT . '_posts_custom_column', 'igfs_list_column', 10, 2 );
 
@@ -188,8 +218,7 @@ add_action( 'add_meta_boxes', 'igfs_add_meta_box' );
  */
 function igfs_meta_box( $post ) {
 	wp_nonce_field( 'igfs_meta_save', 'igfs_meta_nonce' );
-	$type    = (string) get_post_meta( $post->ID, '_igfs_type', true );
-	$account = (string) get_post_meta( $post->ID, '_igfs_account', true );
+	$type = (string) get_post_meta( $post->ID, '_igfs_type', true );
 	?>
 	<p><label for="igfs_url"><?php esc_html_e( 'Link da publicação', 'ig-feed-sync' ); ?></label>
 	<input type="url" id="igfs_url" name="igfs_url" class="widefat" placeholder="https://www.instagram.com/p/..." value="<?php echo esc_attr( get_post_meta( $post->ID, '_igfs_url', true ) ); ?>"></p>
@@ -200,12 +229,14 @@ function igfs_meta_box( $post ) {
 		<option value="Video" <?php selected( $type, 'Video' ); ?>><?php esc_html_e( 'Vídeo', 'ig-feed-sync' ); ?></option>
 	</select></p>
 	<?php if ( count( igfs_accounts() ) > 1 ) : ?>
-		<p><label for="igfs_account"><?php esc_html_e( 'Conta', 'ig-feed-sync' ); ?></label>
-		<select id="igfs_account" name="igfs_account" class="widefat">
+		<?php $current = igfs_post_accounts( $post->ID ); ?>
+		<fieldset><legend><?php esc_html_e( 'Contas', 'ig-feed-sync' ); ?></legend>
+			<input type="hidden" name="igfs_accounts_field" value="1">
 			<?php foreach ( array_keys( igfs_accounts() ) as $name ) : ?>
-				<option value="<?php echo esc_attr( $name ); ?>" <?php selected( $account, $name ); ?>><?php echo esc_html( $name ); ?></option>
+				<label style="display:block"><input type="checkbox" name="igfs_accounts[]" value="<?php echo esc_attr( $name ); ?>" <?php checked( in_array( $name, $current, true ) ); ?>> <?php echo esc_html( $name ); ?></label>
 			<?php endforeach; ?>
-		</select></p>
+		</fieldset>
+		<p class="description"><?php esc_html_e( 'Publicações partilhadas entre contas aparecem na grelha de cada conta marcada. Sem nenhuma marcada, fica na conta principal.', 'ig-feed-sync' ); ?></p>
 	<?php endif; ?>
 	<p class="description"><?php esc_html_e( 'A imagem da grelha é a imagem de destaque. A data de publicação define a posição na grelha.', 'ig-feed-sync' ); ?></p>
 	<?php
@@ -225,9 +256,12 @@ function igfs_meta_save( $post_id ) {
 	}
 	$type = isset( $_POST['igfs_type'] ) ? sanitize_text_field( wp_unslash( $_POST['igfs_type'] ) ) : 'Image';
 	update_post_meta( $post_id, '_igfs_type', in_array( $type, array( 'Image', 'Sidecar', 'Video' ), true ) ? $type : 'Image' );
-	$account = igfs_account( isset( $_POST['igfs_account'] ) ? sanitize_text_field( wp_unslash( $_POST['igfs_account'] ) ) : '' );
-	if ( '' !== $account ) {
-		update_post_meta( $post_id, '_igfs_account', $account );
+	if ( isset( $_POST['igfs_accounts_field'] ) ) {
+		$wanted = isset( $_POST['igfs_accounts'] ) ? array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['igfs_accounts'] ) ) : array();
+		delete_post_meta( $post_id, '_igfs_account' );
+		foreach ( array_unique( array_filter( array_map( 'igfs_account', array_filter( $wanted ) ) ) ) as $account ) {
+			add_post_meta( $post_id, '_igfs_account', $account );
+		}
 	}
 
 	// O shortcode impede que o n8n duplique a publicação (e tira-a das "Publicações extra").
@@ -735,6 +769,7 @@ function igfs_rest_save_post( WP_REST_Request $request ) {
 			)
 		);
 		update_post_meta( $post_id, '_igfs_type', $request['type'] );
+		igfs_add_account( $post_id, $account ); // Publicação partilhada com outra conta do site.
 		if ( count( (array) $request['images'] ) > 1 && ! get_post_meta( $post_id, '_igfs_images', true ) ) {
 			igfs_save_gallery( $post_id, $request['images'], $shortcode, $title );
 		}

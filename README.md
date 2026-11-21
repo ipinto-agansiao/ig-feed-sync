@@ -101,7 +101,9 @@ Regras:
 
 - Cada conta tem a sua data de última publicação e o seu perfil.
 - A "Imagem do perfil" das definições e as "Publicações extra" só se aplicam à conta principal.
-- Nas publicações adicionadas à mão, escolhe-se a conta na caixa "Instagram".
+- Uma publicação pode pertencer a várias contas do site (ex.: partilhada entre duas contas). Se o n8n a receber de outra conta, o plugin junta essa conta à mesma entrada, sem duplicar a publicação nem as imagens. Aparece na grelha de cada conta.
+- Na caixa "Instagram" do editor marcam-se as contas da publicação. Sem nenhuma marcada, fica na conta principal.
+- A lista de publicações tem a coluna "Conta" e um filtro por conta. Nas definições, cada conta mostra quantas publicações tem.
 
 ## Contas com restrição de idade (actor intropix)
 
