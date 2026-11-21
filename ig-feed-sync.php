@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IG Feed Sync
  * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.8.0
+ * Version: 1.9.0
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.8.0' );
+define( 'IGFS_VERSION', '1.9.0' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -990,6 +990,7 @@ function igfs_feed_shortcode( $atts ) {
 			'featured' => '',
 			'ratio'    => '',
 			'width'    => '',
+			'bg'       => '', // Cor de fundo dos cartões (hex), ex.: bg="#f5f1ec".
 			'account'  => '',
 			'lightbox' => null, // null = definição do plugin; lightbox="1" ou "0" sobrepõe.
 			'header'   => null, // null = definição do plugin; header="1" ou "0" sobrepõe.
@@ -1099,6 +1100,8 @@ function igfs_feed_shortcode( $atts ) {
 		$color = sanitize_hex_color( (string) get_option( $opt, '' ) );
 		$btn_vars .= $color ? ';' . $var . ':' . $color : '';
 	}
+	$bg         = sanitize_hex_color( (string) $atts['bg'] );
+	$btn_vars  .= $bg ? ';--igfs-card:' . $bg : '';
 	$btn_vars  .= ';--igfs-btn-radius:' . absint( get_option( 'igfs_btn_radius', 0 ) ) . 'px';
 	$btn_class .= 'outline' === get_option( 'igfs_btn_style' ) ? ' igfs--btn-outline' : '';
 	$btn_class .= get_option( 'igfs_btn_upper' ) ? ' igfs--btn-upper' : '';
