@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IG Feed Sync
  * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.10.2
+ * Version: 1.11.0
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.10.2' );
+define( 'IGFS_VERSION', '1.11.0' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -40,6 +40,115 @@ function igfs_activate() {
 	}
 }
 register_activation_hook( __FILE__, 'igfs_activate' );
+
+/**
+ * Meta query das publicações de uma conta. Publicações antigas (antes de haver
+ * várias contas) não têm conta: são da principal.
+ *
+ * @param string $account Conta.
+ * @return array
+ */
+function igfs_account_meta_query( $account ) {
+	$by_account = array(
+		'key'   => '_igfs_account',
+		'value' => $account,
+	);
+	return array_key_first( igfs_accounts() ) === $account ? array(
+		'relation' => 'OR',
+		$by_account,
+		array(
+			'key'     => '_igfs_account',
+			'compare' => 'NOT EXISTS',
+		),
+	) : array( $by_account );
+}
+
+/**
+ * Número de publicações publicadas de uma conta.
+ *
+ * @param string $account Conta.
+ * @return int
+ */
+function igfs_account_count( $account ) {
+	$query = new WP_Query(
+		array(
+			'post_type'      => IGFS_CPT,
+			'post_status'    => 'publish',
+			'meta_query'     => igfs_account_meta_query( $account ), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+		)
+	);
+	return (int) $query->found_posts;
+}
+
+/**
+ * Coluna "Conta" na lista de publicações (só com mais de uma conta).
+ *
+ * @param array $columns Colunas.
+ * @return array
+ */
+function igfs_list_columns( $columns ) {
+	if ( count( igfs_accounts() ) > 1 ) {
+		$columns = array_slice( $columns, 0, 2, true ) + array( 'igfs_account' => __( 'Conta', 'ig-feed-sync' ) ) + array_slice( $columns, 2, null, true );
+	}
+	return $columns;
+}
+add_filter( 'manage_' . IGFS_CPT . '_posts_columns', 'igfs_list_columns' );
+
+/**
+ * Conteúdo da coluna "Conta".
+ *
+ * @param string $column  Coluna.
+ * @param int    $post_id Publicação.
+ */
+function igfs_list_column( $column, $post_id ) {
+	if ( 'igfs_account' !== $column ) {
+		return;
+	}
+	$account = (string) get_post_meta( $post_id, '_igfs_account', true );
+	echo esc_html( '' !== $account ? $account : (string) array_key_first( igfs_accounts() ) );
+}
+add_action( 'manage_' . IGFS_CPT . '_posts_custom_column', 'igfs_list_column', 10, 2 );
+
+/**
+ * Filtro por conta por cima da lista de publicações.
+ *
+ * @param string $post_type Tipo de conteúdo.
+ */
+function igfs_list_filter( $post_type ) {
+	$accounts = array_keys( igfs_accounts() );
+	if ( IGFS_CPT !== $post_type || count( $accounts ) < 2 ) {
+		return;
+	}
+	$current = isset( $_GET['igfs_account'] ) ? sanitize_text_field( wp_unslash( $_GET['igfs_account'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	?>
+	<label class="screen-reader-text" for="igfs-filter-account"><?php esc_html_e( 'Filtrar por conta', 'ig-feed-sync' ); ?></label>
+	<select name="igfs_account" id="igfs-filter-account">
+		<option value=""><?php esc_html_e( 'Todas as contas', 'ig-feed-sync' ); ?></option>
+		<?php foreach ( $accounts as $name ) : ?>
+			<option value="<?php echo esc_attr( $name ); ?>" <?php selected( $current, $name ); ?>><?php echo esc_html( $name ); ?></option>
+		<?php endforeach; ?>
+	</select>
+	<?php
+}
+add_action( 'restrict_manage_posts', 'igfs_list_filter' );
+
+/**
+ * Aplica o filtro por conta à lista de publicações.
+ *
+ * @param WP_Query $query Consulta.
+ */
+function igfs_list_filter_query( $query ) {
+	if ( ! is_admin() || ! $query->is_main_query() || IGFS_CPT !== $query->get( 'post_type' ) || empty( $_GET['igfs_account'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		return;
+	}
+	$account = igfs_account( sanitize_text_field( wp_unslash( $_GET['igfs_account'] ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	if ( '' !== $account ) {
+		$query->set( 'meta_query', igfs_account_meta_query( $account ) );
+	}
+}
+add_action( 'pre_get_posts', 'igfs_list_filter_query' );
 
 /**
  * Tipo de conteúdo das publicações (sem páginas públicas).
@@ -1015,20 +1124,7 @@ function igfs_feed_shortcode( $atts ) {
 	if ( '' === $account ) {
 		return '';
 	}
-	$is_main = array_key_first( igfs_accounts() ) === $account;
-	// Publicações antigas (antes de haver várias contas) não têm conta: são da principal.
-	$by_account = array(
-		'key'   => '_igfs_account',
-		'value' => $account,
-	);
-	$meta_query = $is_main ? array(
-		'relation' => 'OR',
-		$by_account,
-		array(
-			'key'     => '_igfs_account',
-			'compare' => 'NOT EXISTS',
-		),
-	) : array( $by_account );
+	$meta_query = igfs_account_meta_query( $account );
 
 	$num = min( max( absint( $atts['num'] ), 1 ), 50 );
 
@@ -1611,6 +1707,7 @@ function igfs_settings_page() {
 								<?php else : ?>
 									<span><?php esc_html_e( 'Ainda não sincronizada.', 'ig-feed-sync' ); ?></span>
 								<?php endif; ?>
+								· <?php echo esc_html( number_format_i18n( igfs_account_count( $name ) ) ); ?> <?php esc_html_e( 'publicadas', 'ig-feed-sync' ); ?>
 								· <?php esc_html_e( 'Publicação mais recente:', 'ig-feed-sync' ); ?> <?php echo $last ? esc_html( wp_date( $fmt, $last ) ) : '—'; ?>
 							</div>
 						</div>
