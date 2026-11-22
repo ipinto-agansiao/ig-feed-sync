@@ -1,0 +1,385 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: IG Feed Sync 1.13.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-22 15:32+0000\n"
+"Language: pt_PT\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: ig-feed-sync.php:125
+msgid "Account"
+msgstr "Conta"
+
+#: ig-feed-sync.php:157
+msgid "Filter by account"
+msgstr "Filtrar por conta"
+
+#: ig-feed-sync.php:159
+msgid "All accounts"
+msgstr "Todas as contas"
+
+#: ig-feed-sync.php:192 ig-feed-sync.php:219
+msgid "Instagram"
+msgstr "Instagram"
+
+#: ig-feed-sync.php:193 ig-feed-sync.php:1407
+msgid "Instagram post"
+msgstr "Publicação do Instagram"
+
+#: ig-feed-sync.php:232
+msgid "Post link"
+msgstr "Link da publicação"
+
+#: ig-feed-sync.php:234
+msgid "Type"
+msgstr "Tipo"
+
+#: ig-feed-sync.php:236 ig-feed-sync.php:1403
+msgid "Image"
+msgstr "Imagem"
+
+#: ig-feed-sync.php:237
+msgid "Carousel"
+msgstr "Carrossel"
+
+#: ig-feed-sync.php:238
+msgid "Video"
+msgstr "Vídeo"
+
+#: ig-feed-sync.php:242 ig-feed-sync.php:1795
+msgid "Accounts"
+msgstr "Contas"
+
+#: ig-feed-sync.php:248
+msgid "Posts shared between accounts appear in the grid of each checked account. With none checked, the post stays in the main account."
+msgstr "Publicações partilhadas entre contas aparecem na grelha de cada conta marcada. Sem nenhuma marcada, fica na conta principal."
+
+#: ig-feed-sync.php:250
+msgid "The grid image is the featured image. The publish date sets the position in the grid."
+msgstr "A imagem da grelha é a imagem de destaque. A data de publicação define a posição na grelha."
+
+#: ig-feed-sync.php:347
+msgid "Delete with images (can be imported again)"
+msgstr "Apagar com imagens (pode voltar a ser importada)"
+
+#: ig-feed-sync.php:430 ig-feed-sync.php:1662
+msgid "You do not have permission to do this."
+msgstr "Sem permissão."
+
+#. translators: %d: number of posts
+#: ig-feed-sync.php:446
+#, php-format
+msgid "%d post deleted, with its images."
+msgid_plural "%d posts deleted, with their images."
+msgstr[0] "%d publicação apagada, com as imagens."
+msgstr[1] "%d publicações apagadas, com as imagens."
+
+#. translators: %d: number of posts
+#: ig-feed-sync.php:448
+#, php-format
+msgid "Reset done: %d posts and their images were deleted. Run the n8n workflow to import everything again."
+msgstr "Reset feito: %d publicações e as imagens foram apagadas. Corra o workflow do n8n para voltar a importar tudo."
+
+#. translators: %s: number of posts
+#: ig-feed-sync.php:1330
+#, php-format
+msgid "%s post"
+msgid_plural "%s posts"
+msgstr[0] "%s publicação"
+msgstr[1] "%s publicações"
+
+#. translators: %s: number of followers
+#: ig-feed-sync.php:1333
+#, php-format
+msgid "%s follower"
+msgid_plural "%s followers"
+msgstr[0] "%s seguidor"
+msgstr[1] "%s seguidores"
+
+#: ig-feed-sync.php:1400
+msgid "Close"
+msgstr "Fechar"
+
+#: ig-feed-sync.php:1401
+msgid "Previous post"
+msgstr "Publicação anterior"
+
+#: ig-feed-sync.php:1402
+msgid "Next post"
+msgstr "Publicação seguinte"
+
+#: ig-feed-sync.php:1404
+msgid "View on Instagram"
+msgstr "Ver no Instagram"
+
+#: ig-feed-sync.php:1405
+msgid "To watch the video here, accept the marketing cookies."
+msgstr "Para ver o vídeo aqui, aceite os cookies de marketing."
+
+#: ig-feed-sync.php:1406
+msgid "If the video does not open, watch it on Instagram."
+msgstr "Se o vídeo não abrir, veja-o no Instagram."
+
+#: ig-feed-sync.php:1408
+msgid "Post"
+msgstr "Publicação"
+
+#: ig-feed-sync.php:1639
+msgid "Instagram did not return the posts for the account"
+msgstr "o Instagram não devolveu as publicações da conta"
+
+#: ig-feed-sync.php:1643
+msgid "View settings"
+msgstr "Ver definições"
+
+#: ig-feed-sync.php:1685
+msgid "New key generated. Update the key in the n8n Clientes list."
+msgstr "Chave nova gerada. Atualize a chave na lista Clientes do n8n."
+
+#: ig-feed-sync.php:1691
+msgid "Instagram account"
+msgstr "Conta do Instagram"
+
+#: ig-feed-sync.php:1695
+msgid "Import since"
+msgstr "Importar desde"
+
+#: ig-feed-sync.php:1697
+msgid "When you change this date, the next n8n run requests posts from that date again (without duplicating existing ones). After that, requests start on the day of the last saved post."
+msgstr "Ao mudar esta data, a próxima execução do n8n volta a pedir a partir dela (sem duplicar o que já existe). Depois, os pedidos começam no dia da última publicação guardada."
+
+#: ig-feed-sync.php:1700
+msgid "Other accounts"
+msgstr "Outras contas"
+
+#: ig-feed-sync.php:1701
+msgid "otheraccount"
+msgstr "outraconta"
+
+#: ig-feed-sync.php:1702
+msgid "Optional. One account per line: the name and the start date (YYYY-MM-DD). Each account has its own grid: [igfs_feed account=\"otheraccount\"]. In n8n, add one line per account to the Clientes list, with account."
+msgstr "Opcional. Uma conta por linha: o nome e a data de início (AAAA-MM-DD). Cada conta tem a sua grelha: [igfs_feed account=\"outraconta\"]. No n8n, acrescentar uma linha por conta na lista Clientes, com account."
+
+#: ig-feed-sync.php:1705
+msgid "Extra posts"
+msgstr "Publicações extra"
+
+#: ig-feed-sync.php:1707
+msgid "One link per line. For collaborations that belong to another account and so are not included in the normal request. They are imported on the next n8n run."
+msgstr "Um link por linha. Para colaborações que pertencem a outra conta e por isso não vêm no pedido normal. São importadas na próxima execução do n8n."
+
+#: ig-feed-sync.php:1710
+msgid "Header"
+msgstr "Cabeçalho"
+
+#: ig-feed-sync.php:1711
+msgid "Show the account photo and name above the grid"
+msgstr "Mostrar a foto e o nome da conta por cima da grelha"
+
+#: ig-feed-sync.php:1712
+msgid "In the shortcode, header=\"1\" or header=\"0\" changes only that grid."
+msgstr "No shortcode, header=\"1\" ou header=\"0\" muda só essa grelha."
+
+#: ig-feed-sync.php:1715
+msgid "Profile image"
+msgstr "Imagem do perfil"
+
+#: ig-feed-sync.php:1721
+msgid "Choose image"
+msgstr "Escolher imagem"
+
+#: ig-feed-sync.php:1722
+msgid "Remove"
+msgstr "Remover"
+
+#: ig-feed-sync.php:1724
+msgid "Replaces the photo that comes from Instagram. Empty = use the Instagram photo."
+msgstr "Substitui a foto que vem do Instagram. Vazio = usa a do Instagram."
+
+#: ig-feed-sync.php:1728
+msgid "Images"
+msgstr "Imagens"
+
+#: ig-feed-sync.php:1731
+msgid "Lightbox"
+msgstr "Lightbox"
+
+#: ig-feed-sync.php:1732
+msgid "Open posts in a window on the site"
+msgstr "Abrir as publicações numa janela no site"
+
+#: ig-feed-sync.php:1733
+msgid "When off, each post opens on Instagram in a new tab. In the shortcode, lightbox=\"1\" or lightbox=\"0\" changes only that grid."
+msgstr "Desligada, cada publicação abre no Instagram, num separador novo. No shortcode, lightbox=\"1\" ou lightbox=\"0\" muda só essa grelha."
+
+#: ig-feed-sync.php:1734
+msgid "Also show the \"View on Instagram\" button on photos (it always appears on videos)"
+msgstr "Mostrar o botão \"Ver no Instagram\" também nas fotos (nos vídeos aparece sempre)"
+
+#: ig-feed-sync.php:1737
+msgid "Maximum size"
+msgstr "Tamanho máximo"
+
+#: ig-feed-sync.php:1739
+msgid "Longest side of saved images (480 to 2160). 1080 is the Instagram resolution: above that the image gains no quality, only weight."
+msgstr "Lado maior das imagens guardadas (480 a 2160). 1080 é a resolução do Instagram: acima disso a imagem não ganha qualidade, só peso."
+
+#: ig-feed-sync.php:1742
+msgid "Quality"
+msgstr "Qualidade"
+
+#: ig-feed-sync.php:1744
+msgid "WebP compression from 50 to 95 (80 recommended). Higher = sharper and heavier images. Applies to images imported from now on."
+msgstr "Compressão WebP de 50 a 95 (80 recomendado). Mais alto = imagens mais nítidas e mais pesadas. Aplica-se às imagens importadas a partir daqui."
+
+#: ig-feed-sync.php:1747
+msgid "\"View on Instagram\" button"
+msgstr "Botão \"Ver no Instagram\""
+
+#: ig-feed-sync.php:1750 ig-feed-sync.php:1758
+msgid "Text"
+msgstr "Texto"
+
+#: ig-feed-sync.php:1751
+msgid "Follow us on Instagram"
+msgstr "Siga-nos no Instagram"
+
+#: ig-feed-sync.php:1752
+msgid "Appears below every grid and links to the account profile. Empty = no button. In the shortcode, button=\"...\" changes the text and button=\"\" hides the button."
+msgstr "Aparece por baixo de todas as grelhas e leva ao perfil da conta. Vazio = sem botão. No shortcode, button=\"...\" muda o texto e button=\"\" esconde o botão."
+
+#: ig-feed-sync.php:1755
+msgid "Colors"
+msgstr "Cores"
+
+#: ig-feed-sync.php:1757
+msgid "Background"
+msgstr "Fundo"
+
+#: ig-feed-sync.php:1759
+msgid "The background color is also used for the header icon in the highlight layout."
+msgstr "A cor de fundo também é usada no ícone do cabeçalho do layout highlight."
+
+#: ig-feed-sync.php:1763
+msgid "Style"
+msgstr "Estilo"
+
+#: ig-feed-sync.php:1765
+msgid "Filled"
+msgstr "Cheio"
+
+#: ig-feed-sync.php:1766
+msgid "Outline only"
+msgstr "Só contorno"
+
+#: ig-feed-sync.php:1767
+msgid "Rounded corners"
+msgstr "Cantos arredondados"
+
+#: ig-feed-sync.php:1768
+msgid "Uppercase text"
+msgstr "Texto em maiúsculas"
+
+#: ig-feed-sync.php:1772
+msgid "Sync"
+msgstr "Sincronização"
+
+#: ig-feed-sync.php:1773
+msgid "Active (n8n can write)"
+msgstr "Ativa (o n8n pode escrever)"
+
+#: ig-feed-sync.php:1779
+msgid "n8n connection"
+msgstr "Ligação ao n8n"
+
+#: ig-feed-sync.php:1782
+msgid "Site URL"
+msgstr "URL do site"
+
+#: ig-feed-sync.php:1786
+msgid "Site key (for n8n)"
+msgstr "Chave do site (para o n8n)"
+
+#: ig-feed-sync.php:1788
+msgid "Paste into the key field of the n8n Clientes list. It is the same for every account on this site."
+msgstr "Colar no campo key da lista Clientes do n8n. É a mesma para todas as contas deste site."
+
+#: ig-feed-sync.php:1791
+msgid "Last n8n request"
+msgstr "Último pedido do n8n"
+
+#: ig-feed-sync.php:1808
+msgid "followers"
+msgstr "seguidores"
+
+#: ig-feed-sync.php:1814
+msgid "Profile read on"
+msgstr "Perfil lido em"
+
+#: ig-feed-sync.php:1816
+msgid "Not synced yet."
+msgstr "Ainda não sincronizada."
+
+#: ig-feed-sync.php:1818
+msgid "published"
+msgstr "publicadas"
+
+#: ig-feed-sync.php:1819
+msgid "Latest post:"
+msgstr "Publicação mais recente:"
+
+#: ig-feed-sync.php:1823
+msgid "Check that the name and photo belong to the right account: a misspelled name may match another Instagram account."
+msgstr "Confirme que o nome e a foto são da conta certa: um nome mal escrito pode corresponder a outra conta do Instagram."
+
+#: ig-feed-sync.php:1824
+msgid "published in total"
+msgstr "publicadas no total"
+
+#: ig-feed-sync.php:1828
+msgid "The current key will stop working. Continue?"
+msgstr "A chave atual deixa de funcionar. Continuar?"
+
+#: ig-feed-sync.php:1831
+msgid "Generate new key"
+msgstr "Gerar chave nova"
+
+#: ig-feed-sync.php:1833 ig-feed-sync.php:1839
+msgid "Delete everything and start over"
+msgstr "Apagar tudo e recomeçar"
+
+#: ig-feed-sync.php:1834
+msgid "Deletes all posts (including those in the trash), the images and the profile photos, and forgets the date of the last post of each account. The settings and the key are kept. The next n8n run imports everything again from the start date of each account."
+msgstr "Apaga todas as publicações (incluindo as do lixo), as imagens e as fotos de perfil, e esquece a data da última publicação de cada conta. As definições e a chave ficam. A próxima execução do n8n volta a importar tudo desde a data inicial de cada conta."
+
+#: ig-feed-sync.php:1835
+msgid "To delete only some posts, use the list under Instagram: select them and choose \"Delete with images\". Deleted this way, they come back on the next import if they are within the dates or in Extra posts. Moved to the trash, they do not come back."
+msgstr "Para apagar só algumas publicações, use a lista em Instagram: selecione-as e escolha \"Apagar com imagens\". Apagadas assim, voltam na próxima importação se estiverem dentro das datas ou em Publicações extra. Movidas para o lixo, não voltam."
+
+#: ig-feed-sync.php:1836
+msgid "Delete all Instagram posts and images from this site? This cannot be undone."
+msgstr "Apagar todas as publicações e imagens do Instagram deste site? Não é possível desfazer."
+
+#: ig-feed-sync.php:1841
+msgid "Shortcodes"
+msgstr "Shortcodes"
+
+#: ig-feed-sync.php:1845
+msgid "main"
+msgstr "principal"
+
+#: ig-feed-sync.php:1848
+msgid "See more on Instagram"
+msgstr "Ver mais no Instagram"
+
+#: ig-feed-sync.php:1853
+msgid "Options: layout=\"cards|highlight\", num (number of posts), cols (columns), featured=\"1|tall|0\" (1st post at 2x2, 1x2 or normal), ratio=\"1|4/5|auto\", width=\"1100\" (maximum width in px), title, button (button=\"\" hides the button), account (other account), header=\"1|0\" (header), lightbox=\"1|0\"."
+msgstr "Opções: layout=\"cards|highlight\", num (número de publicações), cols (colunas), featured=\"1|tall|0\" (1.ª em 2x2, em 1x2 ou normal), ratio=\"1|4/5|auto\", width=\"1100\" (largura máxima em px), title, button (button=\"\" esconde o botão), account (outra conta), header=\"1|0\" (cabeçalho), lightbox=\"1|0\"."
+
+#: ig-feed-sync.php:1854
+msgid "Hex colors: bg=\"#f5f1ec\" (card background in the cards layout), btn_bg=\"#111111\" (button background), btn_color=\"#ffffff\" (button text). Without bg, the background is white; without btn_bg and btn_color, the colors from the settings are used."
+msgstr "Cores em hexadecimal: bg=\"#f5f1ec\" (fundo dos cartões no layout cards), btn_bg=\"#111111\" (fundo do botão), btn_color=\"#ffffff\" (texto do botão). Sem bg, o fundo é branco; sem btn_bg e btn_color, usam-se as cores das definições."
+

@@ -1,11 +1,12 @@
 <?php
 /**
  * Plugin Name: IG Feed Sync
- * Description: Grelha de publicações do Instagram alimentada pelo n8n (Apify). O n8n envia as publicações para a REST API; o plugin guarda-as e mostra-as com o shortcode [igfs_feed].
- * Version: 1.12.0
+ * Description: Instagram post grid fed by n8n (Apify). n8n sends the posts to the REST API; the plugin stores them and shows them with the [igfs_feed] shortcode.
+ * Version: 1.13.0
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: ig-feed-sync
+ * Domain Path: /languages
  * Update URI: https://github.com/ipinto-agansiao/ig-feed-sync
  *
  * @package IG_Feed_Sync
@@ -13,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'IGFS_VERSION', '1.12.0' );
+define( 'IGFS_VERSION', '1.13.0' );
 define( 'IGFS_CPT', 'igfs_post' );
 // Repositório público de onde os sites recebem as atualizações (releases do GitHub).
 define( 'IGFS_UPDATE_REPO', 'https://github.com/ipinto-agansiao/ig-feed-sync/' );
@@ -121,7 +122,7 @@ function igfs_account_count( $account ) {
  */
 function igfs_list_columns( $columns ) {
 	if ( count( igfs_accounts() ) > 1 ) {
-		$columns = array_slice( $columns, 0, 2, true ) + array( 'igfs_account' => __( 'Conta', 'ig-feed-sync' ) ) + array_slice( $columns, 2, null, true );
+		$columns = array_slice( $columns, 0, 2, true ) + array( 'igfs_account' => __( 'Account', 'ig-feed-sync' ) ) + array_slice( $columns, 2, null, true );
 	}
 	return $columns;
 }
@@ -153,9 +154,9 @@ function igfs_list_filter( $post_type ) {
 	}
 	$current = isset( $_GET['igfs_account'] ) ? sanitize_text_field( wp_unslash( $_GET['igfs_account'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 	?>
-	<label class="screen-reader-text" for="igfs-filter-account"><?php esc_html_e( 'Filtrar por conta', 'ig-feed-sync' ); ?></label>
+	<label class="screen-reader-text" for="igfs-filter-account"><?php esc_html_e( 'Filter by account', 'ig-feed-sync' ); ?></label>
 	<select name="igfs_account" id="igfs-filter-account">
-		<option value=""><?php esc_html_e( 'Todas as contas', 'ig-feed-sync' ); ?></option>
+		<option value=""><?php esc_html_e( 'All accounts', 'ig-feed-sync' ); ?></option>
 		<?php foreach ( $accounts as $name ) : ?>
 			<option value="<?php echo esc_attr( $name ); ?>" <?php selected( $current, $name ); ?>><?php echo esc_html( $name ); ?></option>
 		<?php endforeach; ?>
@@ -189,7 +190,7 @@ function igfs_register_cpt() {
 		array(
 			'labels'              => array(
 				'name'          => __( 'Instagram', 'ig-feed-sync' ),
-				'singular_name' => __( 'Publicação do Instagram', 'ig-feed-sync' ),
+				'singular_name' => __( 'Instagram post', 'ig-feed-sync' ),
 			),
 			'public'              => false,
 			'show_ui'             => true,
@@ -201,6 +202,14 @@ function igfs_register_cpt() {
 	);
 }
 add_action( 'init', 'igfs_register_cpt' );
+
+/**
+ * Traduções incluídas no plugin (languages/). As de wp-content/languages/plugins/ têm prioridade.
+ */
+function igfs_load_textdomain() {
+	load_plugin_textdomain( 'ig-feed-sync', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+}
+add_action( 'init', 'igfs_load_textdomain', 0 );
 
 /**
  * Caixa "Instagram" no editor: permite adicionar publicações à mão
@@ -220,25 +229,25 @@ function igfs_meta_box( $post ) {
 	wp_nonce_field( 'igfs_meta_save', 'igfs_meta_nonce' );
 	$type = (string) get_post_meta( $post->ID, '_igfs_type', true );
 	?>
-	<p><label for="igfs_url"><?php esc_html_e( 'Link da publicação', 'ig-feed-sync' ); ?></label>
+	<p><label for="igfs_url"><?php esc_html_e( 'Post link', 'ig-feed-sync' ); ?></label>
 	<input type="url" id="igfs_url" name="igfs_url" class="widefat" placeholder="https://www.instagram.com/p/..." value="<?php echo esc_attr( get_post_meta( $post->ID, '_igfs_url', true ) ); ?>"></p>
-	<p><label for="igfs_type"><?php esc_html_e( 'Tipo', 'ig-feed-sync' ); ?></label>
+	<p><label for="igfs_type"><?php esc_html_e( 'Type', 'ig-feed-sync' ); ?></label>
 	<select id="igfs_type" name="igfs_type" class="widefat">
-		<option value="Image" <?php selected( $type, 'Image' ); ?>><?php esc_html_e( 'Imagem', 'ig-feed-sync' ); ?></option>
-		<option value="Sidecar" <?php selected( $type, 'Sidecar' ); ?>><?php esc_html_e( 'Carrossel', 'ig-feed-sync' ); ?></option>
-		<option value="Video" <?php selected( $type, 'Video' ); ?>><?php esc_html_e( 'Vídeo', 'ig-feed-sync' ); ?></option>
+		<option value="Image" <?php selected( $type, 'Image' ); ?>><?php esc_html_e( 'Image', 'ig-feed-sync' ); ?></option>
+		<option value="Sidecar" <?php selected( $type, 'Sidecar' ); ?>><?php esc_html_e( 'Carousel', 'ig-feed-sync' ); ?></option>
+		<option value="Video" <?php selected( $type, 'Video' ); ?>><?php esc_html_e( 'Video', 'ig-feed-sync' ); ?></option>
 	</select></p>
 	<?php if ( count( igfs_accounts() ) > 1 ) : ?>
 		<?php $current = igfs_post_accounts( $post->ID ); ?>
-		<fieldset><legend><?php esc_html_e( 'Contas', 'ig-feed-sync' ); ?></legend>
+		<fieldset><legend><?php esc_html_e( 'Accounts', 'ig-feed-sync' ); ?></legend>
 			<input type="hidden" name="igfs_accounts_field" value="1">
 			<?php foreach ( array_keys( igfs_accounts() ) as $name ) : ?>
 				<label style="display:block"><input type="checkbox" name="igfs_accounts[]" value="<?php echo esc_attr( $name ); ?>" <?php checked( in_array( $name, $current, true ) ); ?>> <?php echo esc_html( $name ); ?></label>
 			<?php endforeach; ?>
 		</fieldset>
-		<p class="description"><?php esc_html_e( 'Publicações partilhadas entre contas aparecem na grelha de cada conta marcada. Sem nenhuma marcada, fica na conta principal.', 'ig-feed-sync' ); ?></p>
+		<p class="description"><?php esc_html_e( 'Posts shared between accounts appear in the grid of each checked account. With none checked, the post stays in the main account.', 'ig-feed-sync' ); ?></p>
 	<?php endif; ?>
-	<p class="description"><?php esc_html_e( 'A imagem da grelha é a imagem de destaque. A data de publicação define a posição na grelha.', 'ig-feed-sync' ); ?></p>
+	<p class="description"><?php esc_html_e( 'The grid image is the featured image. The publish date sets the position in the grid.', 'ig-feed-sync' ); ?></p>
 	<?php
 }
 
@@ -335,7 +344,7 @@ function igfs_trashed_post( $post_id ) {
  * @return array
  */
 function igfs_bulk_actions( $actions ) {
-	$actions['igfs_delete'] = __( 'Apagar com imagens (pode voltar a ser importada)', 'ig-feed-sync' );
+	$actions['igfs_delete'] = __( 'Delete with images (can be imported again)', 'ig-feed-sync' );
 	return $actions;
 }
 add_filter( 'bulk_actions-edit-' . IGFS_CPT, 'igfs_bulk_actions' );
@@ -418,7 +427,7 @@ function igfs_reset() {
  */
 function igfs_reset_action() {
 	if ( ! current_user_can( 'manage_options' ) ) {
-		wp_die( esc_html__( 'Sem permissão.', 'ig-feed-sync' ) );
+		wp_die( esc_html__( 'You do not have permission to do this.', 'ig-feed-sync' ) );
 	}
 	check_admin_referer( 'igfs_reset' );
 	$count = igfs_reset();
@@ -433,9 +442,10 @@ add_action( 'admin_post_igfs_reset', 'igfs_reset_action' );
 function igfs_delete_notices() {
 	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- só mostra um número.
 	if ( isset( $_GET['igfs_deleted'] ) ) {
-		$msg = sprintf( /* translators: %d: número de publicações */ __( '%d publicações apagadas, com as imagens.', 'ig-feed-sync' ), absint( $_GET['igfs_deleted'] ) );
+		$n   = absint( $_GET['igfs_deleted'] );
+		$msg = sprintf( /* translators: %d: number of posts */ _n( '%d post deleted, with its images.', '%d posts deleted, with their images.', $n, 'ig-feed-sync' ), $n );
 	} elseif ( isset( $_GET['reset'] ) && 'igfs' === ( $_GET['page'] ?? '' ) ) {
-		$msg = sprintf( /* translators: %d: número de publicações */ __( 'Reset feito: %d publicações e as imagens foram apagadas. Corra o workflow do n8n para voltar a importar tudo.', 'ig-feed-sync' ), absint( $_GET['reset'] ) );
+		$msg = sprintf( /* translators: %d: number of posts */ __( 'Reset done: %d posts and their images were deleted. Run the n8n workflow to import everything again.', 'ig-feed-sync' ), absint( $_GET['reset'] ) );
 	}
 	// phpcs:enable
 	if ( ! empty( $msg ) && current_user_can( 'edit_posts' ) ) {
@@ -1118,6 +1128,68 @@ function igfs_register_assets() {
 add_action( 'wp_enqueue_scripts', 'igfs_register_assets' );
 
 /**
+ * Legenda em texto simples: algumas chegam (ou foram editadas) com HTML, que a lightbox mostrava como texto.
+ *
+ * @param string $content Conteúdo da publicação.
+ * @return string
+ */
+function igfs_caption_text( $content ) {
+	$content = preg_replace( '#<br\s*/?>|</p>#i', "\n", (string) $content );
+	$content = str_replace( "\r", '', wp_strip_all_tags( $content ) );
+	// Bases de dados utf8 (sem mb4) guardam os emojis como &#x…; — volta a convertê-los.
+	return trim( preg_replace( "/\n{3,}/", "\n\n", html_entity_decode( $content, ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ) );
+}
+
+/**
+ * Traduz um texto para a língua da página.
+ *
+ * - WPML e Polylang (API de strings do WPML, que o Polylang também implementa): só textos com $name, como as
+ *   legendas. Ficam registados em "Tradução de strings", no grupo ig-feed-sync, na primeira vez que aparecem.
+ * - TranslatePress: os dados da lightbox vão num <template data-no-translation>, porque o TranslatePress
+ *   traduzia o JSON inteiro como uma só frase e a tradução automática estragava-o (aspas e escapes). Aqui
+ *   cada linha é traduzida à parte, como um parágrafo, e o dicionário guarda frases normais, revistas no
+ *   editor do TranslatePress.
+ *
+ * @param string $text Texto simples (pode ter várias linhas).
+ * @param string $name Nome da string no WPML/Polylang (único). Vazio = não regista.
+ * @return string
+ */
+function igfs_translate( $text, $name = '' ) {
+	global $TRP_LANGUAGE; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.VariableNotSnakeCase
+	// Strings do gettext vêm com as marcas do TranslatePress (#!trpst#…#!trpen#), que estragavam o JSON.
+	$text = preg_replace( '/#!trpst#.*?#!trpen#/s', '', (string) $text );
+	if ( '' === trim( (string) $text ) ) {
+		return $text;
+	}
+	if ( '' !== $name && has_filter( 'wpml_translate_single_string' ) ) {
+		do_action( 'wpml_register_single_string', 'ig-feed-sync', $name, $text );
+		return (string) apply_filters( 'wpml_translate_single_string', $text, 'ig-feed-sync', $name );
+	}
+	if ( ! function_exists( 'trp_translate' ) || empty( $TRP_LANGUAGE ) ) { // phpcs:ignore WordPress.NamingConventions.ValidVariableName.VariableNotSnakeCase
+		return $text;
+	}
+	$settings = (array) get_option( 'trp_settings', array() );
+	if ( empty( $settings['default-language'] ) || $settings['default-language'] === $TRP_LANGUAGE ) { // phpcs:ignore WordPress.NamingConventions.ValidVariableName.VariableNotSnakeCase
+		return $text;
+	}
+	$lines = explode( "\n", (string) $text );
+	$html  = '';
+	foreach ( $lines as $i => $line ) {
+		if ( '' !== trim( $line ) ) {
+			$html .= '<p data-igfs-l="' . $i . '">' . esc_html( $line ) . '</p>';
+		}
+	}
+	$out = trp_translate( $html, null, false );
+	if ( ! preg_match_all( '#<p data-igfs-l="(\d+)"[^>]*>(.*?)</p>#s', (string) $out, $m, PREG_SET_ORDER ) ) {
+		return $text;
+	}
+	foreach ( $m as $p ) {
+		$lines[ (int) $p[1] ] = html_entity_decode( wp_strip_all_tags( $p[2] ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+	}
+	return implode( "\n", $lines );
+}
+
+/**
  * Shortcode da grelha.
  *
  * @param array|string $atts Atributos.
@@ -1159,6 +1231,7 @@ function igfs_feed_shortcode( $atts ) {
 	if ( '' === $account ) {
 		return '';
 	}
+	$is_main    = array_key_first( igfs_accounts() ) === $account; // Desde a 1.11 ficava indefinida (aviso de PHP e sem a foto das definições).
 	$meta_query = igfs_account_meta_query( $account );
 
 	$num = min( max( absint( $atts['num'] ), 1 ), 50 );
@@ -1254,10 +1327,10 @@ function igfs_feed_shortcode( $atts ) {
 			<?php if ( 'cards' === $layout ) : ?>
 				<span class="igfs__name" data-no-translation><?php echo esc_html( $username ); ?></span>
 				<?php if ( ! empty( $profile['posts_count'] ) ) : ?>
-					<span class="igfs__stat"><?php echo esc_html( sprintf( /* translators: %s: número de publicações */ __( '%s publicações', 'ig-feed-sync' ), number_format_i18n( $profile['posts_count'] ) ) ); ?></span>
+					<span class="igfs__stat"><?php echo esc_html( sprintf( /* translators: %s: number of posts */ _n( '%s post', '%s posts', (int) $profile['posts_count'], 'ig-feed-sync' ), number_format_i18n( $profile['posts_count'] ) ) ); ?></span>
 				<?php endif; ?>
 				<?php if ( ! empty( $profile['followers'] ) ) : ?>
-					<span class="igfs__stat"><?php echo esc_html( sprintf( /* translators: %s: número de seguidores */ __( '%s seguidores', 'ig-feed-sync' ), number_format_i18n( $profile['followers'] ) ) ); ?></span>
+					<span class="igfs__stat"><?php echo esc_html( sprintf( /* translators: %s: number of followers */ _n( '%s follower', '%s followers', (int) $profile['followers'], 'ig-feed-sync' ), number_format_i18n( $profile['followers'] ) ) ); ?></span>
 				<?php endif; ?>
 			<?php else : ?>
 				<span class="igfs__name" data-no-translation><?php echo esc_html( $title ); ?></span>
@@ -1268,7 +1341,8 @@ function igfs_feed_shortcode( $atts ) {
 			<?php
 			while ( $query->have_posts() ) :
 				$query->the_post();
-				$type = (string) get_post_meta( get_the_ID(), '_igfs_type', true );
+				$type    = (string) get_post_meta( get_the_ID(), '_igfs_type', true );
+				$caption = igfs_translate( igfs_caption_text( get_the_content() ), 'caption ' . get_the_ID() );
 				if ( $lightbox ) {
 					$slides = array();
 					foreach ( array_merge( array( (int) get_post_thumbnail_id() ), array_map( 'intval', (array) get_post_meta( get_the_ID(), '_igfs_images', true ) ) ) as $att ) {
@@ -1277,8 +1351,6 @@ function igfs_feed_shortcode( $atts ) {
 							$slides[] = array( $src[0], (int) $src[1], (int) $src[2] );
 						}
 					}
-					// Bases de dados utf8 (sem mb4) guardam os emojis como &#x…; — volta a convertê-los.
-					$caption = html_entity_decode( get_the_content(), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 					$items[] = array(
 						'url'     => (string) get_post_meta( get_the_ID(), '_igfs_url', true ),
 						'sc'      => (string) get_post_meta( get_the_ID(), '_igfs_shortcode', true ),
@@ -1302,7 +1374,7 @@ function igfs_feed_shortcode( $atts ) {
 							null,
 							'medium_large',
 							array(
-								'alt'     => wp_trim_words( html_entity_decode( get_the_content(), ENT_QUOTES | ENT_HTML5, 'UTF-8' ), 20 ),
+								'alt'     => wp_trim_words( $caption, 20 ),
 								'loading' => 'lazy',
 								'sizes'   => '(max-width: 767px) 50vw, ' . round( 100 / $cols ) . 'vw',
 							)
@@ -1315,7 +1387,8 @@ function igfs_feed_shortcode( $atts ) {
 		</ul>
 		<?php if ( $lightbox ) : ?>
 			<?php // <template> e não <script>: bloqueadores de cookies (ex.: Complianz) reescrevem scripts que mencionam o Instagram e estragavam o JSON. ?>
-			<template class="igfs-data">
+			<?php // data-no-translation: o tradutor (TranslatePress) estragava o JSON; as legendas já vêm traduzidas por igfs_translate(). ?>
+			<template class="igfs-data" data-no-translation>
 			<?php
 			echo wp_json_encode(
 				array(
@@ -1324,15 +1397,15 @@ function igfs_feed_shortcode( $atts ) {
 					'items'  => $items,
 					'linkPhotos' => (bool) get_option( 'igfs_lb_link_photos', 0 ),
 					'i18n'   => array(
-						'close'   => __( 'Fechar', 'ig-feed-sync' ),
-						'prev'    => __( 'Publicação anterior', 'ig-feed-sync' ),
-						'next'    => __( 'Publicação seguinte', 'ig-feed-sync' ),
-						'slide'   => __( 'Imagem', 'ig-feed-sync' ),
-						'open'    => __( 'Ver no Instagram', 'ig-feed-sync' ),
-						'consent' => __( 'Para ver o vídeo aqui, aceite os cookies de marketing.', 'ig-feed-sync' ),
-						'video'   => __( 'Se o vídeo não abrir, veja-o no Instagram.', 'ig-feed-sync' ),
-						'label'   => __( 'Publicação do Instagram', 'ig-feed-sync' ),
-						'post'    => __( 'Publicação', 'ig-feed-sync' ),
+						'close'   => igfs_translate( __( 'Close', 'ig-feed-sync' ) ),
+						'prev'    => igfs_translate( __( 'Previous post', 'ig-feed-sync' ) ),
+						'next'    => igfs_translate( __( 'Next post', 'ig-feed-sync' ) ),
+						'slide'   => igfs_translate( __( 'Image', 'ig-feed-sync' ) ),
+						'open'    => igfs_translate( __( 'View on Instagram', 'ig-feed-sync' ) ),
+						'consent' => igfs_translate( __( 'To watch the video here, accept the marketing cookies.', 'ig-feed-sync' ) ),
+						'video'   => igfs_translate( __( 'If the video does not open, watch it on Instagram.', 'ig-feed-sync' ) ),
+						'label'   => igfs_translate( __( 'Instagram post', 'ig-feed-sync' ) ),
+						'post'    => igfs_translate( __( 'Post', 'ig-feed-sync' ) ),
 					),
 				),
 				JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE
@@ -1341,7 +1414,7 @@ function igfs_feed_shortcode( $atts ) {
 			</template>
 		<?php endif; ?>
 		<?php if ( '' !== $btn_text ) : ?>
-			<a class="igfs__button" href="<?php echo esc_url( $prof_url ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $btn_text ); ?></a>
+			<a class="igfs__button" href="<?php echo esc_url( $prof_url ); ?>" target="_blank" rel="noopener" data-no-translation><?php echo esc_html( igfs_translate( $btn_text ) ); ?></a>
 		<?php endif; ?>
 	</div>
 	<?php
@@ -1563,11 +1636,11 @@ function igfs_admin_notices() {
 		}
 		printf(
 			'<div class="notice notice-error"><p><strong>IG Feed Sync:</strong> %1$s <code>%2$s</code>: %3$s <a href="%4$s">%5$s</a></p></div>',
-			esc_html__( 'o Instagram não devolveu as publicações da conta', 'ig-feed-sync' ),
+			esc_html__( 'Instagram did not return the posts for the account', 'ig-feed-sync' ),
 			esc_html( $name ),
 			esc_html( $status['error'] ),
 			esc_url( admin_url( 'options-general.php?page=igfs' ) ),
-			esc_html__( 'Ver definições', 'ig-feed-sync' )
+			esc_html__( 'View settings', 'ig-feed-sync' )
 		);
 	}
 }
@@ -1586,7 +1659,7 @@ add_action( 'admin_menu', 'igfs_admin_menu' );
  */
 function igfs_regenerate_key() {
 	if ( ! current_user_can( 'manage_options' ) ) {
-		wp_die( esc_html__( 'Sem permissão.', 'ig-feed-sync' ) );
+		wp_die( esc_html__( 'You do not have permission to do this.', 'ig-feed-sync' ) );
 	}
 	check_admin_referer( 'igfs_regenerate_key' );
 	update_option( 'igfs_key', wp_generate_password( 48, false ), false );
@@ -1609,117 +1682,117 @@ function igfs_settings_page() {
 	<div class="wrap">
 		<h1>IG Feed Sync</h1>
 		<?php if ( isset( $_GET['key'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
-			<div class="notice notice-success"><p><?php esc_html_e( 'Chave nova gerada. Atualize a chave na lista Clientes do n8n.', 'ig-feed-sync' ); ?></p></div>
+			<div class="notice notice-success"><p><?php esc_html_e( 'New key generated. Update the key in the n8n Clientes list.', 'ig-feed-sync' ); ?></p></div>
 		<?php endif; ?>
 		<form method="post" action="options.php">
 			<?php settings_fields( 'igfs' ); ?>
 			<table class="form-table" role="presentation">
 				<tr>
-					<th scope="row"><label for="igfs_username"><?php esc_html_e( 'Conta do Instagram', 'ig-feed-sync' ); ?></label></th>
+					<th scope="row"><label for="igfs_username"><?php esc_html_e( 'Instagram account', 'ig-feed-sync' ); ?></label></th>
 					<td><input name="igfs_username" id="igfs_username" type="text" class="regular-text" value="<?php echo esc_attr( get_option( 'igfs_username', '' ) ); ?>" placeholder="nomedaconta"></td>
 				</tr>
 				<tr>
-					<th scope="row"><label for="igfs_start_date"><?php esc_html_e( 'Importar desde', 'ig-feed-sync' ); ?></label></th>
+					<th scope="row"><label for="igfs_start_date"><?php esc_html_e( 'Import since', 'ig-feed-sync' ); ?></label></th>
 					<td><input name="igfs_start_date" id="igfs_start_date" type="date" value="<?php echo esc_attr( get_option( 'igfs_start_date', '' ) ); ?>">
-					<p class="description"><?php esc_html_e( 'Ao mudar esta data, a próxima execução do n8n volta a pedir a partir dela (sem duplicar o que já existe). Depois, os pedidos começam no dia da última publicação guardada.', 'ig-feed-sync' ); ?></p></td>
+					<p class="description"><?php esc_html_e( 'When you change this date, the next n8n run requests posts from that date again (without duplicating existing ones). After that, requests start on the day of the last saved post.', 'ig-feed-sync' ); ?></p></td>
 				</tr>
 				<tr>
-					<th scope="row"><label for="igfs_other_accounts"><?php esc_html_e( 'Outras contas', 'ig-feed-sync' ); ?></label></th>
-					<td><textarea name="igfs_other_accounts" id="igfs_other_accounts" rows="3" class="large-text code" placeholder="outraconta 2026-06-01"><?php echo esc_textarea( get_option( 'igfs_other_accounts', '' ) ); ?></textarea>
-					<p class="description"><?php esc_html_e( 'Opcional. Uma conta por linha: o nome e a data de início (AAAA-MM-DD). Cada conta tem a sua grelha: [igfs_feed account="outraconta"]. No n8n, acrescentar uma linha por conta na lista Clientes, com account.', 'ig-feed-sync' ); ?></p></td>
+					<th scope="row"><label for="igfs_other_accounts"><?php esc_html_e( 'Other accounts', 'ig-feed-sync' ); ?></label></th>
+					<td><textarea name="igfs_other_accounts" id="igfs_other_accounts" rows="3" class="large-text code" placeholder="<?php esc_attr_e( 'otheraccount', 'ig-feed-sync' ); ?> 2026-06-01"><?php echo esc_textarea( get_option( 'igfs_other_accounts', '' ) ); ?></textarea>
+					<p class="description"><?php esc_html_e( 'Optional. One account per line: the name and the start date (YYYY-MM-DD). Each account has its own grid: [igfs_feed account="otheraccount"]. In n8n, add one line per account to the Clientes list, with account.', 'ig-feed-sync' ); ?></p></td>
 				</tr>
 				<tr>
-					<th scope="row"><label for="igfs_extra_urls"><?php esc_html_e( 'Publicações extra', 'ig-feed-sync' ); ?></label></th>
+					<th scope="row"><label for="igfs_extra_urls"><?php esc_html_e( 'Extra posts', 'ig-feed-sync' ); ?></label></th>
 					<td><textarea name="igfs_extra_urls" id="igfs_extra_urls" rows="4" class="large-text code" placeholder="https://www.instagram.com/p/..."><?php echo esc_textarea( get_option( 'igfs_extra_urls', '' ) ); ?></textarea>
-					<p class="description"><?php esc_html_e( 'Um link por linha. Para colaborações que pertencem a outra conta e por isso não vêm no pedido normal. São importadas na próxima execução do n8n.', 'ig-feed-sync' ); ?></p></td>
+					<p class="description"><?php esc_html_e( 'One link per line. For collaborations that belong to another account and so are not included in the normal request. They are imported on the next n8n run.', 'ig-feed-sync' ); ?></p></td>
 				</tr>
 				<tr>
-					<th scope="row"><?php esc_html_e( 'Cabeçalho', 'ig-feed-sync' ); ?></th>
-					<td><label><input name="igfs_header" type="checkbox" value="1" <?php checked( get_option( 'igfs_header', 1 ) ); ?>> <?php esc_html_e( 'Mostrar a foto e o nome da conta por cima da grelha', 'ig-feed-sync' ); ?></label>
-					<p class="description"><?php esc_html_e( 'No shortcode, header="1" ou header="0" muda só essa grelha.', 'ig-feed-sync' ); ?></p></td>
+					<th scope="row"><?php esc_html_e( 'Header', 'ig-feed-sync' ); ?></th>
+					<td><label><input name="igfs_header" type="checkbox" value="1" <?php checked( get_option( 'igfs_header', 1 ) ); ?>> <?php esc_html_e( 'Show the account photo and name above the grid', 'ig-feed-sync' ); ?></label>
+					<p class="description"><?php esc_html_e( 'In the shortcode, header="1" or header="0" changes only that grid.', 'ig-feed-sync' ); ?></p></td>
 				</tr>
 				<tr>
-					<th scope="row"><?php esc_html_e( 'Imagem do perfil', 'ig-feed-sync' ); ?></th>
+					<th scope="row"><?php esc_html_e( 'Profile image', 'ig-feed-sync' ); ?></th>
 					<td>
 						<?php $avatar_id = (int) get_option( 'igfs_avatar_id', 0 ); ?>
 						<input type="hidden" name="igfs_avatar_id" id="igfs_avatar_id" value="<?php echo esc_attr( $avatar_id ? $avatar_id : '' ); ?>">
 						<span id="igfs-avatar-preview"><?php echo $avatar_id ? wp_get_attachment_image( $avatar_id, array( 80, 80 ), false, array( 'style' => 'border-radius:50%;object-fit:cover' ) ) : ''; ?></span>
 						<p>
-							<button type="button" class="button" data-igfs-avatar="choose"><?php esc_html_e( 'Escolher imagem', 'ig-feed-sync' ); ?></button>
-							<button type="button" class="button-link" data-igfs-avatar="remove"><?php esc_html_e( 'Remover', 'ig-feed-sync' ); ?></button>
+							<button type="button" class="button" data-igfs-avatar="choose"><?php esc_html_e( 'Choose image', 'ig-feed-sync' ); ?></button>
+							<button type="button" class="button-link" data-igfs-avatar="remove"><?php esc_html_e( 'Remove', 'ig-feed-sync' ); ?></button>
 						</p>
-						<p class="description"><?php esc_html_e( 'Substitui a foto que vem do Instagram. Vazio = usa a do Instagram.', 'ig-feed-sync' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Replaces the photo that comes from Instagram. Empty = use the Instagram photo.', 'ig-feed-sync' ); ?></p>
 					</td>
 				</tr>
 				<tr>
-					<th scope="row" colspan="2"><h2 style="margin:0"><?php esc_html_e( 'Imagens', 'ig-feed-sync' ); ?></h2></th>
+					<th scope="row" colspan="2"><h2 style="margin:0"><?php esc_html_e( 'Images', 'ig-feed-sync' ); ?></h2></th>
 				</tr>
 				<tr>
 					<th scope="row"><?php esc_html_e( 'Lightbox', 'ig-feed-sync' ); ?></th>
-					<td><label><input name="igfs_lightbox" type="checkbox" value="1" <?php checked( get_option( 'igfs_lightbox', 1 ) ); ?>> <?php esc_html_e( 'Abrir as publicações numa janela no site', 'ig-feed-sync' ); ?></label>
-					<p class="description"><?php esc_html_e( 'Desligada, cada publicação abre no Instagram, num separador novo. No shortcode, lightbox="1" ou lightbox="0" muda só essa grelha.', 'ig-feed-sync' ); ?></p>
-					<label><input name="igfs_lb_link_photos" type="checkbox" value="1" <?php checked( get_option( 'igfs_lb_link_photos', 0 ) ); ?>> <?php esc_html_e( 'Mostrar o botão "Ver no Instagram" também nas fotos (nos vídeos aparece sempre)', 'ig-feed-sync' ); ?></label></td>
+					<td><label><input name="igfs_lightbox" type="checkbox" value="1" <?php checked( get_option( 'igfs_lightbox', 1 ) ); ?>> <?php esc_html_e( 'Open posts in a window on the site', 'ig-feed-sync' ); ?></label>
+					<p class="description"><?php esc_html_e( 'When off, each post opens on Instagram in a new tab. In the shortcode, lightbox="1" or lightbox="0" changes only that grid.', 'ig-feed-sync' ); ?></p>
+					<label><input name="igfs_lb_link_photos" type="checkbox" value="1" <?php checked( get_option( 'igfs_lb_link_photos', 0 ) ); ?>> <?php esc_html_e( 'Also show the "View on Instagram" button on photos (it always appears on videos)', 'ig-feed-sync' ); ?></label></td>
 				</tr>
 				<tr>
-					<th scope="row"><label for="igfs_image_max"><?php esc_html_e( 'Tamanho máximo', 'ig-feed-sync' ); ?></label></th>
+					<th scope="row"><label for="igfs_image_max"><?php esc_html_e( 'Maximum size', 'ig-feed-sync' ); ?></label></th>
 					<td><input name="igfs_image_max" id="igfs_image_max" type="number" min="480" max="2160" step="10" class="small-text" value="<?php echo esc_attr( igfs_image_setting( 'igfs_image_max' ) ); ?>"> px
-					<p class="description"><?php esc_html_e( 'Lado maior das imagens guardadas (480 a 2160). 1080 é a resolução do Instagram: acima disso a imagem não ganha qualidade, só peso.', 'ig-feed-sync' ); ?></p></td>
+					<p class="description"><?php esc_html_e( 'Longest side of saved images (480 to 2160). 1080 is the Instagram resolution: above that the image gains no quality, only weight.', 'ig-feed-sync' ); ?></p></td>
 				</tr>
 				<tr>
-					<th scope="row"><label for="igfs_image_quality"><?php esc_html_e( 'Qualidade', 'ig-feed-sync' ); ?></label></th>
+					<th scope="row"><label for="igfs_image_quality"><?php esc_html_e( 'Quality', 'ig-feed-sync' ); ?></label></th>
 					<td><input name="igfs_image_quality" id="igfs_image_quality" type="number" min="50" max="95" class="small-text" value="<?php echo esc_attr( igfs_image_setting( 'igfs_image_quality' ) ); ?>">
-					<p class="description"><?php esc_html_e( 'Compressão WebP de 50 a 95 (80 recomendado). Mais alto = imagens mais nítidas e mais pesadas. Aplica-se às imagens importadas a partir daqui.', 'ig-feed-sync' ); ?></p></td>
+					<p class="description"><?php esc_html_e( 'WebP compression from 50 to 95 (80 recommended). Higher = sharper and heavier images. Applies to images imported from now on.', 'ig-feed-sync' ); ?></p></td>
 				</tr>
 				<tr>
-					<th scope="row" colspan="2"><h2 style="margin:0"><?php esc_html_e( 'Botão "Ver no Instagram"', 'ig-feed-sync' ); ?></h2></th>
+					<th scope="row" colspan="2"><h2 style="margin:0"><?php esc_html_e( '"View on Instagram" button', 'ig-feed-sync' ); ?></h2></th>
 				</tr>
 				<tr>
-					<th scope="row"><label for="igfs_btn_text"><?php esc_html_e( 'Texto', 'ig-feed-sync' ); ?></label></th>
-					<td><input name="igfs_btn_text" id="igfs_btn_text" type="text" class="regular-text" value="<?php echo esc_attr( get_option( 'igfs_btn_text', '' ) ); ?>" placeholder="Siga-nos no Instagram">
-					<p class="description"><?php esc_html_e( 'Aparece por baixo de todas as grelhas e leva ao perfil da conta. Vazio = sem botão. No shortcode, button="..." muda o texto e button="" esconde o botão.', 'ig-feed-sync' ); ?></p></td>
+					<th scope="row"><label for="igfs_btn_text"><?php esc_html_e( 'Text', 'ig-feed-sync' ); ?></label></th>
+					<td><input name="igfs_btn_text" id="igfs_btn_text" type="text" class="regular-text" value="<?php echo esc_attr( get_option( 'igfs_btn_text', '' ) ); ?>" placeholder="<?php esc_attr_e( 'Follow us on Instagram', 'ig-feed-sync' ); ?>">
+					<p class="description"><?php esc_html_e( 'Appears below every grid and links to the account profile. Empty = no button. In the shortcode, button="..." changes the text and button="" hides the button.', 'ig-feed-sync' ); ?></p></td>
 				</tr>
 				<tr>
-					<th scope="row"><?php esc_html_e( 'Cores', 'ig-feed-sync' ); ?></th>
+					<th scope="row"><?php esc_html_e( 'Colors', 'ig-feed-sync' ); ?></th>
 					<td>
-						<label for="igfs_btn_bg"><?php esc_html_e( 'Fundo', 'ig-feed-sync' ); ?></label><br><input id="igfs_btn_bg" name="igfs_btn_bg" type="text" class="igfs-color" value="<?php echo esc_attr( get_option( 'igfs_btn_bg', '#111111' ) ); ?>" data-default-color="#111111"><br>
-						<label for="igfs_btn_color"><?php esc_html_e( 'Texto', 'ig-feed-sync' ); ?></label><br><input id="igfs_btn_color" name="igfs_btn_color" type="text" class="igfs-color" value="<?php echo esc_attr( get_option( 'igfs_btn_color', '#ffffff' ) ); ?>" data-default-color="#ffffff">
-						<p class="description"><?php esc_html_e( 'A cor de fundo também é usada no ícone do cabeçalho do layout highlight.', 'ig-feed-sync' ); ?></p>
+						<label for="igfs_btn_bg"><?php esc_html_e( 'Background', 'ig-feed-sync' ); ?></label><br><input id="igfs_btn_bg" name="igfs_btn_bg" type="text" class="igfs-color" value="<?php echo esc_attr( get_option( 'igfs_btn_bg', '#111111' ) ); ?>" data-default-color="#111111"><br>
+						<label for="igfs_btn_color"><?php esc_html_e( 'Text', 'ig-feed-sync' ); ?></label><br><input id="igfs_btn_color" name="igfs_btn_color" type="text" class="igfs-color" value="<?php echo esc_attr( get_option( 'igfs_btn_color', '#ffffff' ) ); ?>" data-default-color="#ffffff">
+						<p class="description"><?php esc_html_e( 'The background color is also used for the header icon in the highlight layout.', 'ig-feed-sync' ); ?></p>
 					</td>
 				</tr>
 				<tr>
-					<th scope="row"><?php esc_html_e( 'Estilo', 'ig-feed-sync' ); ?></th>
+					<th scope="row"><?php esc_html_e( 'Style', 'ig-feed-sync' ); ?></th>
 					<td>
-						<label><input type="radio" name="igfs_btn_style" value="fill" <?php checked( 'outline' !== get_option( 'igfs_btn_style' ) ); ?>> <?php esc_html_e( 'Cheio', 'ig-feed-sync' ); ?></label>&nbsp;&nbsp;
-						<label><input type="radio" name="igfs_btn_style" value="outline" <?php checked( 'outline', get_option( 'igfs_btn_style' ) ); ?>> <?php esc_html_e( 'Só contorno', 'ig-feed-sync' ); ?></label><br>
-						<label><?php esc_html_e( 'Cantos arredondados', 'ig-feed-sync' ); ?> <input name="igfs_btn_radius" type="number" min="0" max="60" class="small-text" value="<?php echo esc_attr( (int) get_option( 'igfs_btn_radius', 0 ) ); ?>"> px</label><br>
-						<label><input name="igfs_btn_upper" type="checkbox" value="1" <?php checked( get_option( 'igfs_btn_upper' ) ); ?>> <?php esc_html_e( 'Texto em maiúsculas', 'ig-feed-sync' ); ?></label>
+						<label><input type="radio" name="igfs_btn_style" value="fill" <?php checked( 'outline' !== get_option( 'igfs_btn_style' ) ); ?>> <?php esc_html_e( 'Filled', 'ig-feed-sync' ); ?></label>&nbsp;&nbsp;
+						<label><input type="radio" name="igfs_btn_style" value="outline" <?php checked( 'outline', get_option( 'igfs_btn_style' ) ); ?>> <?php esc_html_e( 'Outline only', 'ig-feed-sync' ); ?></label><br>
+						<label><?php esc_html_e( 'Rounded corners', 'ig-feed-sync' ); ?> <input name="igfs_btn_radius" type="number" min="0" max="60" class="small-text" value="<?php echo esc_attr( (int) get_option( 'igfs_btn_radius', 0 ) ); ?>"> px</label><br>
+						<label><input name="igfs_btn_upper" type="checkbox" value="1" <?php checked( get_option( 'igfs_btn_upper' ) ); ?>> <?php esc_html_e( 'Uppercase text', 'ig-feed-sync' ); ?></label>
 					</td>
 				</tr>
 				<tr>
-					<th scope="row"><?php esc_html_e( 'Sincronização', 'ig-feed-sync' ); ?></th>
-					<td><label><input name="igfs_enabled" type="checkbox" value="1" <?php checked( get_option( 'igfs_enabled' ) ); ?>> <?php esc_html_e( 'Ativa (o n8n pode escrever)', 'ig-feed-sync' ); ?></label></td>
+					<th scope="row"><?php esc_html_e( 'Sync', 'ig-feed-sync' ); ?></th>
+					<td><label><input name="igfs_enabled" type="checkbox" value="1" <?php checked( get_option( 'igfs_enabled' ) ); ?>> <?php esc_html_e( 'Active (n8n can write)', 'ig-feed-sync' ); ?></label></td>
 				</tr>
 			</table>
 			<?php submit_button(); ?>
 		</form>
 
-		<h2><?php esc_html_e( 'Ligação ao n8n', 'ig-feed-sync' ); ?></h2>
+		<h2><?php esc_html_e( 'n8n connection', 'ig-feed-sync' ); ?></h2>
 		<table class="form-table" role="presentation">
 			<tr>
-				<th scope="row"><?php esc_html_e( 'URL do site', 'ig-feed-sync' ); ?></th>
+				<th scope="row"><?php esc_html_e( 'Site URL', 'ig-feed-sync' ); ?></th>
 				<td><code><?php echo esc_html( home_url() ); ?></code></td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Chave do site (para o n8n)', 'ig-feed-sync' ); ?></th>
+				<th scope="row"><?php esc_html_e( 'Site key (for n8n)', 'ig-feed-sync' ); ?></th>
 				<td><input type="text" class="large-text code" readonly onfocus="this.select()" value="<?php echo esc_attr( get_option( 'igfs_key', '' ) ); ?>">
-				<p class="description"><?php esc_html_e( 'Colar no campo key da lista Clientes do n8n. É a mesma para todas as contas deste site.', 'ig-feed-sync' ); ?></p></td>
+				<p class="description"><?php esc_html_e( 'Paste into the key field of the n8n Clientes list. It is the same for every account on this site.', 'ig-feed-sync' ); ?></p></td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Último pedido do n8n', 'ig-feed-sync' ); ?></th>
+				<th scope="row"><?php esc_html_e( 'Last n8n request', 'ig-feed-sync' ); ?></th>
 				<td><?php echo $last_sync ? esc_html( wp_date( $fmt, $last_sync ) ) : '—'; ?></td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Contas', 'ig-feed-sync' ); ?></th>
+				<th scope="row"><?php esc_html_e( 'Accounts', 'ig-feed-sync' ); ?></th>
 				<td>
 					<?php foreach ( array_keys( igfs_accounts() ) as $name ) : ?>
 						<?php
@@ -1732,53 +1805,53 @@ function igfs_settings_page() {
 							<div>
 								<strong><?php echo esc_html( $name ); ?></strong>
 								<?php if ( ! empty( $prof['full_name'] ) ) : ?>
-									— <?php echo esc_html( $prof['full_name'] ); ?>, <?php echo esc_html( number_format_i18n( (int) $prof['followers'] ) ); ?> <?php esc_html_e( 'seguidores', 'ig-feed-sync' ); ?>
+									— <?php echo esc_html( $prof['full_name'] ); ?>, <?php echo esc_html( number_format_i18n( (int) $prof['followers'] ) ); ?> <?php esc_html_e( 'followers', 'ig-feed-sync' ); ?>
 								<?php endif; ?>
 								<br>
 								<?php if ( ! empty( $status['error'] ) ) : ?>
 									<span style="color:#b32d2e">✗ <?php echo esc_html( $status['error'] ); ?> (<?php echo esc_html( wp_date( $fmt, (int) $status['at'] ) ); ?>)</span>
 								<?php elseif ( ! empty( $status['at'] ) ) : ?>
-									<span style="color:#007017">✓ <?php esc_html_e( 'Perfil lido em', 'ig-feed-sync' ); ?> <?php echo esc_html( wp_date( $fmt, (int) $status['at'] ) ); ?></span>
+									<span style="color:#007017">✓ <?php esc_html_e( 'Profile read on', 'ig-feed-sync' ); ?> <?php echo esc_html( wp_date( $fmt, (int) $status['at'] ) ); ?></span>
 								<?php else : ?>
-									<span><?php esc_html_e( 'Ainda não sincronizada.', 'ig-feed-sync' ); ?></span>
+									<span><?php esc_html_e( 'Not synced yet.', 'ig-feed-sync' ); ?></span>
 								<?php endif; ?>
-								· <?php echo esc_html( number_format_i18n( igfs_account_count( $name ) ) ); ?> <?php esc_html_e( 'publicadas', 'ig-feed-sync' ); ?>
-								· <?php esc_html_e( 'Publicação mais recente:', 'ig-feed-sync' ); ?> <?php echo $last ? esc_html( wp_date( $fmt, $last ) ) : '—'; ?>
+								· <?php echo esc_html( number_format_i18n( igfs_account_count( $name ) ) ); ?> <?php esc_html_e( 'published', 'ig-feed-sync' ); ?>
+								· <?php esc_html_e( 'Latest post:', 'ig-feed-sync' ); ?> <?php echo $last ? esc_html( wp_date( $fmt, $last ) ) : '—'; ?>
 							</div>
 						</div>
 					<?php endforeach; ?>
-					<p class="description"><?php esc_html_e( 'Confirme que o nome e a foto são da conta certa: um nome mal escrito pode corresponder a outra conta do Instagram.', 'ig-feed-sync' ); ?></p>
-					(<?php echo esc_html( (int) $count->publish ); ?> <?php esc_html_e( 'publicadas no total', 'ig-feed-sync' ); ?>)
+					<p class="description"><?php esc_html_e( 'Check that the name and photo belong to the right account: a misspelled name may match another Instagram account.', 'ig-feed-sync' ); ?></p>
+					(<?php echo esc_html( (int) $count->publish ); ?> <?php esc_html_e( 'published in total', 'ig-feed-sync' ); ?>)
 				</td>
 			</tr>
 		</table>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" onsubmit="return confirm('<?php echo esc_js( __( 'A chave atual deixa de funcionar. Continuar?', 'ig-feed-sync' ) ); ?>');">
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" onsubmit="return confirm('<?php echo esc_js( __( 'The current key will stop working. Continue?', 'ig-feed-sync' ) ); ?>');">
 			<input type="hidden" name="action" value="igfs_regenerate_key">
 			<?php wp_nonce_field( 'igfs_regenerate_key' ); ?>
-			<?php submit_button( __( 'Gerar chave nova', 'ig-feed-sync' ), 'secondary', 'submit', false ); ?>
+			<?php submit_button( __( 'Generate new key', 'ig-feed-sync' ), 'secondary', 'submit', false ); ?>
 		</form>
-		<h2><?php esc_html_e( 'Apagar tudo e recomeçar', 'ig-feed-sync' ); ?></h2>
-		<p><?php esc_html_e( 'Apaga todas as publicações (incluindo as do lixo), as imagens e as fotos de perfil, e esquece a data da última publicação de cada conta. As definições e a chave ficam. A próxima execução do n8n volta a importar tudo desde a data inicial de cada conta.', 'ig-feed-sync' ); ?></p>
-		<p><?php esc_html_e( 'Para apagar só algumas publicações, use a lista em Instagram: selecione-as e escolha "Apagar com imagens". Apagadas assim, voltam na próxima importação se estiverem dentro das datas ou em Publicações extra. Movidas para o lixo, não voltam.', 'ig-feed-sync' ); ?></p>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" onsubmit="return confirm('<?php echo esc_js( __( 'Apagar todas as publicações e imagens do Instagram deste site? Não é possível desfazer.', 'ig-feed-sync' ) ); ?>');">
+		<h2><?php esc_html_e( 'Delete everything and start over', 'ig-feed-sync' ); ?></h2>
+		<p><?php esc_html_e( 'Deletes all posts (including those in the trash), the images and the profile photos, and forgets the date of the last post of each account. The settings and the key are kept. The next n8n run imports everything again from the start date of each account.', 'ig-feed-sync' ); ?></p>
+		<p><?php esc_html_e( 'To delete only some posts, use the list under Instagram: select them and choose "Delete with images". Deleted this way, they come back on the next import if they are within the dates or in Extra posts. Moved to the trash, they do not come back.', 'ig-feed-sync' ); ?></p>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" onsubmit="return confirm('<?php echo esc_js( __( 'Delete all Instagram posts and images from this site? This cannot be undone.', 'ig-feed-sync' ) ); ?>');">
 			<input type="hidden" name="action" value="igfs_reset">
 			<?php wp_nonce_field( 'igfs_reset' ); ?>
-			<?php submit_button( __( 'Apagar tudo e recomeçar', 'ig-feed-sync' ), 'delete', 'submit', false ); ?>
+			<?php submit_button( __( 'Delete everything and start over', 'ig-feed-sync' ), 'delete', 'submit', false ); ?>
 		</form>
 		<h2><?php esc_html_e( 'Shortcodes', 'ig-feed-sync' ); ?></h2>
 		<table class="form-table" role="presentation">
 			<?php foreach ( array_keys( igfs_accounts() ) as $i => $name ) : ?>
 				<tr>
-					<th scope="row"><?php echo esc_html( $name ); ?><?php echo 0 === $i ? ' (' . esc_html__( 'principal', 'ig-feed-sync' ) . ')' : ''; ?></th>
+					<th scope="row"><?php echo esc_html( $name ); ?><?php echo 0 === $i ? ' (' . esc_html__( 'main', 'ig-feed-sync' ) . ')' : ''; ?></th>
 					<td>
 						<code>[igfs_feed<?php echo 0 === $i ? '' : ' account="' . esc_html( $name ) . '"'; ?> layout="cards" num="7" featured="tall"]</code><br>
-						<code>[igfs_feed<?php echo 0 === $i ? '' : ' account="' . esc_html( $name ) . '"'; ?> layout="highlight" num="9" title="@<?php echo esc_html( $name ); ?>" button="Ver mais no Instagram"]</code>
+						<code>[igfs_feed<?php echo 0 === $i ? '' : ' account="' . esc_html( $name ) . '"'; ?> layout="highlight" num="9" title="@<?php echo esc_html( $name ); ?>" button="<?php esc_html_e( 'See more on Instagram', 'ig-feed-sync' ); ?>"]</code>
 					</td>
 				</tr>
 			<?php endforeach; ?>
 		</table>
-		<p class="description"><?php esc_html_e( 'Opções: layout="cards|highlight", num (número de publicações), cols (colunas), featured="1|tall|0" (1.ª em 2x2, em 1x2 ou normal), ratio="1|4/5|auto", width="1100" (largura máxima em px), title, button (button="" esconde o botão), account (outra conta), header="1|0" (cabeçalho), lightbox="1|0".', 'ig-feed-sync' ); ?></p>
-		<p class="description"><?php esc_html_e( 'Cores em hexadecimal: bg="#f5f1ec" (fundo dos cartões no layout cards), btn_bg="#111111" (fundo do botão), btn_color="#ffffff" (texto do botão). Sem bg, o fundo é branco; sem btn_bg e btn_color, usam-se as cores das definições.', 'ig-feed-sync' ); ?></p>
+		<p class="description"><?php esc_html_e( 'Options: layout="cards|highlight", num (number of posts), cols (columns), featured="1|tall|0" (1st post at 2x2, 1x2 or normal), ratio="1|4/5|auto", width="1100" (maximum width in px), title, button (button="" hides the button), account (other account), header="1|0" (header), lightbox="1|0".', 'ig-feed-sync' ); ?></p>
+		<p class="description"><?php esc_html_e( 'Hex colors: bg="#f5f1ec" (card background in the cards layout), btn_bg="#111111" (button background), btn_color="#ffffff" (button text). Without bg, the background is white; without btn_bg and btn_color, the colors from the settings are used.', 'ig-feed-sync' ); ?></p>
 	</div>
 	<?php
 }

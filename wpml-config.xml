@@ -1,0 +1,9 @@
+<wpml-config>
+	<!-- Read by WPML and Polylang. Posts are not translated: the grid shows the same posts in every language, and captions are translated as strings (igfs_translate). -->
+	<custom-types>
+		<custom-type translate="0">igfs_post</custom-type>
+	</custom-types>
+	<admin-texts>
+		<key name="igfs_btn_text" />
+	</admin-texts>
+</wpml-config>

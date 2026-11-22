@@ -89,6 +89,19 @@ Por cima da grelha aparece a foto e o nome da conta. Para o esconder, desligar D
 - **Imagens:** são convertidas para WebP (ou JPEG, se o servidor não suportar WebP), com um máximo de 1080 px e qualidade 80. Cada imagem gera só os tamanhos `thumbnail` e `medium_large`, cerca de 60 KB no total. O tamanho máximo (480 a 2160 px) e a qualidade (50 a 95) mudam-se em Definições > IG Feed Sync > Imagens e valem para as imagens importadas a partir daí.
 - **Carrosséis:** guardam até 10 imagens.
 
+## Traduções e sites multilingues
+
+**Textos do plugin (gettext):** as strings de origem estão em inglês, com o text domain `ig-feed-sync`. O plugin inclui `languages/ig-feed-sync-pt_PT` (completo) e `-es_ES` (só os textos da grelha e da lightbox). Para outra língua, traduzir `languages/ig-feed-sync.pot` com o Loco Translate ou o Poedit; os ficheiros em `wp-content/languages/plugins/` têm prioridade sobre os do plugin.
+
+**WPML e Polylang:**
+
+- As publicações não se traduzem (`wpml-config.xml`): a grelha mostra as mesmas em todas as línguas.
+- As legendas aparecem em **Tradução de strings** (WPML) ou **Idiomas > Traduções** (Polylang), no grupo `ig-feed-sync`, na primeira vez que a grelha é vista. Cada uma chama-se `caption <ID>`. Se a legenda mudar, a tradução tem de ser revista.
+- O texto do botão das definições (`igfs_btn_text`) também aparece lá, como texto de administração.
+- Os atributos `title` e `button` do shortcode escrevem-se na página de cada língua.
+
+**TranslatePress:** desde a 1.13.0, nas línguas que não são a de origem, as legendas (na lightbox e no `alt` das imagens), o texto do botão e os textos da lightbox são traduzidos pelo TranslatePress, linha a linha, com a tradução automática do site (se estiver ligada). As traduções ficam no dicionário do TranslatePress e podem ser revistas no editor ou na tabela `trp_dictionary_*`. Os dados da lightbox vão com `data-no-translation`: antes, o TranslatePress traduzia o JSON inteiro como uma só frase e a tradução automática estragava-o (a lightbox deixava de abrir).
+
 ## Várias contas no mesmo site
 
 1. Em **Definições > IG Feed Sync > Outras contas**, escrever uma conta por linha, com o nome e a data de início:

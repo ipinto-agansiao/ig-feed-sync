@@ -1,0 +1,62 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: IG Feed Sync 1.13.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-22 15:32+0000\n"
+"Language: es_ES\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: ig-feed-sync.php:193 ig-feed-sync.php:1407
+msgid "Instagram post"
+msgstr "Publicación de Instagram"
+
+#: ig-feed-sync.php:236 ig-feed-sync.php:1403
+msgid "Image"
+msgstr "Imagen"
+
+#. translators: %s: number of posts
+#: ig-feed-sync.php:1330
+#, php-format
+msgid "%s post"
+msgid_plural "%s posts"
+msgstr[0] "%s publicación"
+msgstr[1] "%s publicaciones"
+
+#. translators: %s: number of followers
+#: ig-feed-sync.php:1333
+#, php-format
+msgid "%s follower"
+msgid_plural "%s followers"
+msgstr[0] "%s seguidor"
+msgstr[1] "%s seguidores"
+
+#: ig-feed-sync.php:1400
+msgid "Close"
+msgstr "Cerrar"
+
+#: ig-feed-sync.php:1401
+msgid "Previous post"
+msgstr "Publicación anterior"
+
+#: ig-feed-sync.php:1402
+msgid "Next post"
+msgstr "Siguiente publicación"
+
+#: ig-feed-sync.php:1404
+msgid "View on Instagram"
+msgstr "Ver en Instagram"
+
+#: ig-feed-sync.php:1405
+msgid "To watch the video here, accept the marketing cookies."
+msgstr "Para ver el vídeo aquí, acepta las cookies de marketing."
+
+#: ig-feed-sync.php:1406
+msgid "If the video does not open, watch it on Instagram."
+msgstr "Si el vídeo no se abre, míralo en Instagram."
+
+#: ig-feed-sync.php:1408
+msgid "Post"
+msgstr "Publicación"
